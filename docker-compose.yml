@@ -1,0 +1,12 @@
+version: "3.8"
+services:
+  visitor-app:
+    build: .
+    ports:
+      - "4000:4000"
+    volumes:
+      - visitor-db:/app/server/data
+    restart: unless-stopped
+
+volumes:
+  visitor-db:
