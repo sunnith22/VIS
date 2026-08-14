@@ -72,18 +72,6 @@ App runs at: http://localhost:4000
 
 ---
 
-## 🔐 Default Login Credentials
-
-| Username       | Password    | Role          |
-|----------------|-------------|---------------|
-| admin          | toyota2024  | Admin         |
-| visit.advisor  | vis@2024    | Visit Advisor |
-| reception      | recep@2024  | Reception     |
-
-To add/change users: edit the `USERS` array in `client/src/Login.jsx`
-
----
-
 ## 📁 Project Structure
 
 ```
