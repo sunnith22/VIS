@@ -1,12 +1,48 @@
 version: "3.8"
+
 services:
-  visitor-app:
-    build: .
+  # Database Server (MongoDB)
+  mongodb:
+    image: mongo:7.0
+    container_name: tiei_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: tiei_visitor_db
+    volumes:
+      - mongo_data:/data/db
+
+  # Backend API Server (Node/Express)
+  visitor-backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: tiei_backend
+    restart: unless-stopped
     ports:
       - "4000:4000"
-    volumes:
-      - visitor-db:/app/server/data
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongodb:27017/tiei_visitor_db
+      CORS_ORIGIN: "*"
+    depends_on:
+      - mongodb
+
+  # Frontend Web Server (React + Nginx)
+  visitor-frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: tiei_frontend
     restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      VITE_API_BASE_URL: http://localhost:4000/api
+    depends_on:
+      - visitor-backend
 
 volumes:
-  visitor-db:
+  mongo_data:

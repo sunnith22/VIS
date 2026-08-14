@@ -1,143 +1,254 @@
 const express = require('express');
-const db = require('../db');
+const Visit = require('../models/Visit');
+const { sendAgendaEmail } = require('../services/emailService');
 const router = express.Router();
 
-// POST /api/visits  -> create a visit + its visitors
-router.post('/visits', (req, res) => {
-  const { header, visitors = [] } = req.body;
+function timeToMinutes(t) {
+  const [h, m] = (t || '09:00').split(':').map(Number);
+  return h * 60 + m;
+}
 
-  const tx = db.transaction(() => {
-    const info = db.prepare(`
-      INSERT INTO visitor_visit
-        (company_name, visit_date, visit_start, visit_end, visit_advisor, visit_no, visit_purpose, status)
-      VALUES (?,?,?,?,?,?,?,'Draft')
-    `).run(
-      header.company || '',
-      header.visitDate || '',
-      header.visitStart || '09:00',
-      header.visitEnd || '',
-      header.visitAdvisor || '',
-      header.visitNo || '',
-      header.visitPurpose || ''
-    );
-    const visitId = info.lastInsertRowid;
+function minutesToTime(m) {
+  const hh = String(Math.floor(m / 60) % 24).padStart(2, '0');
+  const mm = String(m % 60).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
 
-    const insVisitor = db.prepare(`
-      INSERT INTO visitor_detail (visit_id, title, name, designation, company, dept, visited_before, prev_visit_date)
-      VALUES (?,?,?,?,?,?,?,?)
-    `);
-    for (const v of visitors) {
-      insVisitor.run(
-        visitId,
-        v.title || 'Mr',
-        v.name || '',
-        v.designation || '',
-        v.company || '',
-        v.dept || '',
-        v.visitedBefore ? 1 : 0,
-        v.prevDate || null
-      );
-    }
-    return visitId;
-  });
-
-  const visitId = tx();
-  const visit = db.prepare(`SELECT * FROM visitor_visit WHERE id = ?`).get(visitId);
-  res.json(visit);
-});
-
-// GET /api/visits
-router.get('/visits', (req, res) => {
-  const visits = db.prepare(`SELECT * FROM visitor_visit ORDER BY id DESC`).all();
-  res.json(visits);
-});
-
-// GET /api/visits/:id
-router.get('/visits/:id', (req, res) => {
-  const visit = db.prepare(`SELECT * FROM visitor_visit WHERE id = ?`).get(req.params.id);
-  if (!visit) return res.status(404).json({ error: 'Visit not found' });
-  const visitors = db.prepare(`SELECT * FROM visitor_detail WHERE visit_id = ?`).all(req.params.id);
-  res.json({ ...visit, visitors });
-});
-
-// PUT /api/visits/:id
-router.put('/visits/:id', (req, res) => {
-  const { header, visitors } = req.body;
-  const id = req.params.id;
-
-  const tx = db.transaction(() => {
-    if (header) {
-      db.prepare(`
-        UPDATE visitor_visit SET
-          company_name=?, visit_date=?, visit_start=?, visit_end=?,
-          visit_advisor=?, visit_no=?, visit_purpose=?
-        WHERE id=?
-      `).run(
-        header.company || '', header.visitDate || '', header.visitStart || '09:00',
-        header.visitEnd || '', header.visitAdvisor || '', header.visitNo || '',
-        header.visitPurpose || '', id
-      );
-    }
-    if (visitors) {
-      db.prepare(`DELETE FROM visitor_detail WHERE visit_id=?`).run(id);
-      const ins = db.prepare(`
-        INSERT INTO visitor_detail (visit_id, title, name, designation, company, dept, visited_before, prev_visit_date)
-        VALUES (?,?,?,?,?,?,?,?)
-      `);
-      for (const v of visitors) {
-        ins.run(id, v.title || 'Mr', v.name || '', v.designation || '', v.company || '', v.dept || '', v.visitedBefore ? 1 : 0, v.prevDate || null);
-      }
-    }
-  });
-  tx();
-  res.json({ success: true });
-});
-
-// PUT /api/visits/:id/complete -> Update review points, photos & set status to Completed
-router.put('/visits/:id/complete', (req, res) => {
-  const { reviewPoints, photos, status = 'Completed' } = req.body;
-  const id = req.params.id;
-
+// POST /api/visits/finalize
+// Finalizes and saves visit to MongoDB and automatically sends agenda emails upon "Finish"
+router.post('/visits/finalize', async (req, res) => {
   try {
-    const existing = db.prepare(`SELECT * FROM visitor_visit WHERE id = ?`).get(id);
-    if (!existing) return res.status(404).json({ error: 'Visit not found' });
+    const { visitId, header = {}, visitors = [], topAttendees = [], agenda = [], startTime } = req.body;
+    let visit;
+    if (visitId) {
+      visit = await Visit.findById(visitId);
+    }
+    if (!visit) {
+      visit = new Visit();
+    }
+
+    // 1. Map Header
+    visit.company_name = header.company || '';
+    visit.visit_date = header.visitDate || '';
+    visit.visit_start = header.visitStart || '09:00';
+    visit.visit_end = header.visitEnd || '';
+    visit.visit_advisor = header.visitAdvisor || '';
+    visit.visit_no = header.visitNo || '';
+    visit.visit_purpose = header.visitPurpose || '';
+
+    // 2. Map Visitors
+    visit.visitors = (visitors || []).map(v => ({
+      title: v.title || 'Mr',
+      name: v.name || '',
+      designation: v.designation || '',
+      company: v.company || '',
+      dept: v.dept || '',
+      visited_before: Boolean(v.visitedBefore),
+      prev_visit_date: v.prevDate || ''
+    }));
+
+    // 3. Map Top Attendees
+    visit.top_attendees = (topAttendees || []).map(a => ({
+      name: a.name || '',
+      role: a.role || '',
+      email: a.email || '',
+      schedule: a.schedule || {}
+    }));
+
+    // 4. Map Timed Agenda
+    const start = startTime || header.visitStart || '09:00';
+    let cursor = timeToMinutes(start);
+    visit.agenda = (agenda || []).map((r, idx) => {
+      const from = cursor;
+      const dur = Number(r.durationMin || r.duration_min) || 10;
+      cursor += dur;
+      return {
+        sort_order: idx + 1,
+        area: r.area || '',
+        activity_name: r.activity || r.activity_name || '',
+        pic: r.pic || '',
+        support_attendees: r.support_attendees || r.supportAttendees || r.support || '',
+        duration_min: dur,
+        from_time: r.from_time || minutesToTime(from),
+        to_time: r.to_time || minutesToTime(cursor)
+      };
+    });
+
+    visit.status = 'Generated';
+    const saved = await visit.save();
+
+    // 5. Automatically dispatch email to attendees upon Finish
+    let emailResult = null;
+    try {
+      emailResult = await sendAgendaEmail(saved);
+    } catch (e) {
+      console.error('Finalize email dispatch warning:', e.message);
+    }
+
+    res.json({
+      success: true,
+      visit: saved,
+      visitId: saved.id || saved._id,
+      agenda: saved.agenda,
+      emailResult
+    });
+  } catch (err) {
+    console.error('Finalize visit error:', err);
+    res.status(500).json({ error: 'Failed to finalize visit', detail: err.message });
+  }
+});
+
+// POST /api/visits -> create a visit + its visitors + topAttendees
+router.post('/visits', async (req, res) => {
+  try {
+    const { header = {}, visitors = [], topAttendees = [] } = req.body;
+
+    const formattedVisitors = visitors.map(v => ({
+      title: v.title || 'Mr',
+      name: v.name || '',
+      designation: v.designation || '',
+      company: v.company || '',
+      dept: v.dept || '',
+      visited_before: Boolean(v.visitedBefore),
+      prev_visit_date: v.prevDate || ''
+    }));
+
+    const formattedTopAttendees = topAttendees.map(a => ({
+      name: a.name || '',
+      role: a.role || '',
+      email: a.email || '',
+      schedule: a.schedule || {}
+    }));
+
+    const visit = new Visit({
+      company_name: header.company || '',
+      visit_date: header.visitDate || '',
+      visit_start: header.visitStart || '09:00',
+      visit_end: header.visitEnd || '',
+      visit_advisor: header.visitAdvisor || '',
+      visit_no: header.visitNo || '',
+      visit_purpose: header.visitPurpose || '',
+      status: 'Draft',
+      visitors: formattedVisitors,
+      top_attendees: formattedTopAttendees
+    });
+
+    const saved = await visit.save();
+    res.json(saved);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create visit', detail: err.message });
+  }
+});
+
+// GET /api/visits -> List all visits
+router.get('/visits', async (req, res) => {
+  try {
+    const visits = await Visit.find().sort({ createdAt: -1 });
+    res.json(visits);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch visits', detail: err.message });
+  }
+});
+
+// GET /api/visits/:id -> Get single visit
+router.get('/visits/:id', async (req, res) => {
+  try {
+    const visit = await Visit.findById(req.params.id);
+    if (!visit) return res.status(404).json({ error: 'Visit not found' });
+    res.json(visit);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch visit', detail: err.message });
+  }
+});
+
+// PUT /api/visits/:id -> Update visit header, visitors, and topAttendees
+router.put('/visits/:id', async (req, res) => {
+  try {
+    const { header, visitors, topAttendees } = req.body;
+    const visit = await Visit.findById(req.params.id);
+    if (!visit) return res.status(404).json({ error: 'Visit not found' });
+
+    if (header) {
+      if (header.company !== undefined) visit.company_name = header.company;
+      if (header.visitDate !== undefined) visit.visit_date = header.visitDate;
+      if (header.visitStart !== undefined) visit.visit_start = header.visitStart;
+      if (header.visitEnd !== undefined) visit.visit_end = header.visitEnd;
+      if (header.visitAdvisor !== undefined) visit.visit_advisor = header.visitAdvisor;
+      if (header.visitNo !== undefined) visit.visit_no = header.visitNo;
+      if (header.visitPurpose !== undefined) visit.visit_purpose = header.visitPurpose;
+    }
+
+    if (visitors) {
+      visit.visitors = visitors.map(v => ({
+        title: v.title || 'Mr',
+        name: v.name || '',
+        designation: v.designation || '',
+        company: v.company || '',
+        dept: v.dept || '',
+        visited_before: Boolean(v.visitedBefore),
+        prev_visit_date: v.prevDate || ''
+      }));
+    }
+
+    if (topAttendees) {
+      visit.top_attendees = topAttendees.map(a => ({
+        name: a.name || '',
+        role: a.role || '',
+        email: a.email || '',
+        schedule: a.schedule || {}
+      }));
+    }
+
+    await visit.save();
+    res.json({ success: true, visit });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update visit', detail: err.message });
+  }
+});
+
+// PUT /api/visits/:id/complete -> Update review points, photos & set status to Completed (Enforce 24h lock)
+router.put('/visits/:id/complete', async (req, res) => {
+  try {
+    const { reviewPoints, photos, status = 'Completed' } = req.body;
+    const visit = await Visit.findById(req.params.id);
+    if (!visit) return res.status(404).json({ error: 'Visit not found' });
 
     // Check if locked (> 24 hours since completed)
-    if (existing.status === 'Completed') {
-      const refTime = existing.completed_at || existing.created_at || existing.visit_date;
+    if (visit.status === 'Completed') {
+      const refTime = visit.completed_at || visit.createdAt || visit.visit_date;
       if (refTime) {
         const refDate = new Date(refTime);
         if (!isNaN(refDate.getTime())) {
           const diffHours = (Date.now() - refDate.getTime()) / (1000 * 60 * 60);
           if (diffHours >= 24) {
-            return res.status(403).json({ error: 'This visit was completed over 24 hours ago and is locked in read-only mode.' });
+            return res.status(403).json({
+              error: 'This visit was completed over 24 hours ago and is locked in read-only mode.'
+            });
           }
         }
       }
     }
 
-    const photosStr = typeof photos === 'string' ? photos : JSON.stringify(photos || []);
-    
-    // Set completed_at timestamp if completing for the first time
-    let completedAtVal = existing.completed_at;
-    if (status === 'Completed' && !completedAtVal) {
-      completedAtVal = new Date().toISOString();
+    const photosArr = Array.isArray(photos) ? photos : (typeof photos === 'string' ? JSON.parse(photos || '[]') : []);
+
+    visit.review_points = reviewPoints || '';
+    visit.photos = photosArr;
+    visit.status = status;
+
+    if (status === 'Completed' && !visit.completed_at) {
+      visit.completed_at = new Date();
     }
 
-    db.prepare(`
-      UPDATE visitor_visit 
-      SET review_points = ?, photos = ?, status = ?, completed_at = ?
-      WHERE id = ?
-    `).run(reviewPoints || '', photosStr, status, completedAtVal, id);
-
-    const updated = db.prepare(`SELECT * FROM visitor_visit WHERE id = ?`).get(id);
-    res.json({ success: true, visit: updated });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Failed to update visit status', detail: e.message });
+    await visit.save();
+    res.json({ success: true, visit });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update visit status', detail: err.message });
   }
 });
 
 module.exports = router;
-
-

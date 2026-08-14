@@ -301,7 +301,7 @@ export default function VisitDetailModal({ visitId, onClose, onUpdated }) {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: T.bg }}>
-                        {['#', 'Time', 'Duration', 'Area', 'Activity', 'PIC'].map(h => (
+                        {['#', 'Time', 'Duration', 'Area', 'Activity', 'PIC', 'Support / Attendees'].map(h => (
                           <th key={h} style={{ padding: '6px 8px', textAlign: 'left', color: T.muted, fontSize: 10, fontWeight: 700, borderBottom: `1px solid ${T.border}` }}>{h}</th>
                         ))}
                       </tr>
@@ -315,6 +315,7 @@ export default function VisitDetailModal({ visitId, onClose, onUpdated }) {
                           <td style={{ padding: '6px 8px', fontWeight: 600 }}>{r.area}</td>
                           <td style={{ padding: '6px 8px' }}>{r.activity_name}</td>
                           <td style={{ padding: '6px 8px', color: T.muted }}>{r.pic || '—'}</td>
+                          <td style={{ padding: '6px 8px', color: '#475569' }}>{r.support_attendees || r.support || '—'}</td>
                         </tr>
                       ))}
                     </tbody>

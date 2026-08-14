@@ -1,128 +1,149 @@
 const express = require('express');
-const db = require('../db');
+const Visit = require('../models/Visit');
 const router = express.Router();
 
 // GET /api/visitors/suggestions?q=...
-router.get('/visitors/suggestions', (req, res) => {
+router.get('/visitors/suggestions', async (req, res) => {
   const { q } = req.query;
   if (!q || q.trim().length < 1) return res.json([]);
 
   try {
-    const rows = db.prepare(`
-      SELECT 
-        vd.title, 
-        vd.name, 
-        vd.designation, 
-        vd.company, 
-        vd.dept, 
-        MAX(vv.visit_date) AS prev_visit_date,
-        COUNT(vd.id) AS total_visits
-      FROM visitor_detail vd
-      JOIN visitor_visit vv ON vd.visit_id = vv.id
-      WHERE vd.name LIKE ?
-      GROUP BY LOWER(TRIM(vd.name))
-      ORDER BY prev_visit_date DESC
-      LIMIT 10
-    `).all(`%${q.trim()}%`);
-    res.json(rows);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Suggestion search failed', detail: e.message });
+    const regex = new RegExp(q.trim(), 'i');
+
+    const visits = await Visit.find({ 'visitors.name': regex })
+      .sort({ visit_date: -1, createdAt: -1 })
+      .limit(30);
+
+    const map = new Map();
+
+    visits.forEach(v => {
+      (v.visitors || []).forEach(vis => {
+        if (vis.name && regex.test(vis.name)) {
+          const key = vis.name.toLowerCase().trim();
+          if (!map.has(key)) {
+            map.set(key, {
+              title: vis.title || 'Mr',
+              name: vis.name,
+              designation: vis.designation || '',
+              company: vis.company || v.company_name || '',
+              dept: vis.dept || '',
+              prev_visit_date: v.visit_date || '',
+              total_visits: 1
+            });
+          } else {
+            const entry = map.get(key);
+            entry.total_visits += 1;
+            if (!entry.prev_visit_date && v.visit_date) {
+              entry.prev_visit_date = v.visit_date;
+            }
+          }
+        }
+      });
+    });
+
+    const suggestions = Array.from(map.values()).slice(0, 10);
+    res.json(suggestions);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Suggestion search failed', detail: err.message });
   }
 });
 
 // GET /api/visitors/lookup?name=...
-router.get('/visitors/lookup', (req, res) => {
+router.get('/visitors/lookup', async (req, res) => {
   const { name } = req.query;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
 
   try {
     const trimmed = name.trim();
-    // Try exact match first
-    let row = db.prepare(`
-      SELECT 
-        vd.title, 
-        vd.name, 
-        vd.designation, 
-        vd.company, 
-        vd.dept, 
-        vv.visit_date AS prev_visit_date,
-        vv.company_name
-      FROM visitor_detail vd
-      JOIN visitor_visit vv ON vd.visit_id = vv.id
-      WHERE LOWER(TRIM(vd.name)) = LOWER(TRIM(?))
-      ORDER BY vv.visit_date DESC, vd.id DESC
-      LIMIT 1
-    `).get(trimmed);
+    const regexExact = new RegExp(`^${trimmed}$`, 'i');
+    const regexFuzzy = new RegExp(trimmed, 'i');
 
-    // Fallback to fuzzy prefix match
-    if (!row) {
-      row = db.prepare(`
-        SELECT 
-          vd.title, 
-          vd.name, 
-          vd.designation, 
-          vd.company, 
-          vd.dept, 
-          vv.visit_date AS prev_visit_date,
-          vv.company_name
-        FROM visitor_detail vd
-        JOIN visitor_visit vv ON vd.visit_id = vv.id
-        WHERE vd.name LIKE ?
-        ORDER BY vv.visit_date DESC, vd.id DESC
-        LIMIT 1
-      `).get(`%${trimmed}%`);
+    let visit = await Visit.findOne({ 'visitors.name': regexExact }).sort({ visit_date: -1, createdAt: -1 });
+
+    if (!visit) {
+      visit = await Visit.findOne({ 'visitors.name': regexFuzzy }).sort({ visit_date: -1, createdAt: -1 });
     }
 
-    if (!row) return res.status(444).json({ found: false, message: 'No previous visit records found' });
+    if (!visit) {
+      return res.status(404).json({ found: false, message: 'No previous visit records found' });
+    }
 
-    res.json({ found: true, ...row });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Lookup failed', detail: e.message });
+    const matchedVisitor = (visit.visitors || []).find(v => regexFuzzy.test(v.name)) || {};
+
+    res.json({
+      found: true,
+      title: matchedVisitor.title || 'Mr',
+      name: matchedVisitor.name,
+      designation: matchedVisitor.designation || '',
+      company: matchedVisitor.company || visit.company_name || '',
+      dept: matchedVisitor.dept || '',
+      prev_visit_date: visit.visit_date || '',
+      company_name: visit.company_name || ''
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Lookup failed', detail: err.message });
   }
 });
 
 // GET /api/visitors/search?field=name|company|designation|all&q=...
-router.get('/visitors/search', (req, res) => {
+router.get('/visitors/search', async (req, res) => {
   const { field = 'all', q = '' } = req.query;
 
   try {
-    let sql = `
-      SELECT
-        vd.id, vd.visit_id, vd.title, vd.name, vd.designation,
-        vd.company AS visitor_company, vd.dept, vd.visited_before,
-        vv.visit_date, vv.visit_advisor, vv.company_name, vv.visit_no, vv.status, vv.review_points, vv.photos
-      FROM visitor_detail vd
-      JOIN visitor_visit vv ON vd.visit_id = vv.id
-    `;
-    const params = [];
-    if (q && q.trim()) {
-      const searchStr = `%${q.trim()}%`;
-      if (field === 'company') {
-        sql += ` WHERE (vd.company LIKE ? OR vv.company_name LIKE ?)`;
-        params.push(searchStr, searchStr);
-      } else if (field === 'name') {
-        sql += ` WHERE vd.name LIKE ?`;
-        params.push(searchStr);
-      } else if (field === 'designation') {
-        sql += ` WHERE vd.designation LIKE ?`;
-        params.push(searchStr);
-      } else {
-        sql += ` WHERE (vd.name LIKE ? OR vd.company LIKE ? OR vv.company_name LIKE ? OR vd.designation LIKE ?)`;
-        params.push(searchStr, searchStr, searchStr, searchStr);
-      }
-    }
-    sql += ` ORDER BY vv.id DESC, vv.visit_date DESC LIMIT 100`;
+    const visits = await Visit.find().sort({ createdAt: -1 }).limit(100);
+    const results = [];
 
-    const rows = db.prepare(sql).all(...params);
-    res.json(rows);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Search failed', detail: e.message });
+    const searchStr = (q || '').toLowerCase().trim();
+
+    visits.forEach(v => {
+      (v.visitors || []).forEach(vis => {
+        let isMatch = true;
+
+        if (searchStr) {
+          if (field === 'name') {
+            isMatch = (vis.name || '').toLowerCase().includes(searchStr);
+          } else if (field === 'company') {
+            isMatch = (vis.company || '').toLowerCase().includes(searchStr) ||
+              (v.company_name || '').toLowerCase().includes(searchStr);
+          } else if (field === 'designation') {
+            isMatch = (vis.designation || '').toLowerCase().includes(searchStr);
+          } else {
+            isMatch = (vis.name || '').toLowerCase().includes(searchStr) ||
+              (vis.company || '').toLowerCase().includes(searchStr) ||
+              (v.company_name || '').toLowerCase().includes(searchStr) ||
+              (vis.designation || '').toLowerCase().includes(searchStr);
+          }
+        }
+
+        if (isMatch) {
+          results.push({
+            id: vis._id ? vis._id.toString() : vis.id,
+            visit_id: v._id.toString(),
+            title: vis.title || 'Mr',
+            name: vis.name,
+            designation: vis.designation || '',
+            visitor_company: vis.company || v.company_name || '',
+            dept: vis.dept || '',
+            visited_before: vis.visited_before ? 1 : 0,
+            visit_date: v.visit_date,
+            visit_advisor: v.visit_advisor,
+            company_name: v.company_name,
+            visit_no: v.visit_no,
+            status: v.status,
+            review_points: v.review_points,
+            photos: v.photos
+          });
+        }
+      });
+    });
+
+    res.json(results);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Search failed', detail: err.message });
   }
 });
 
-
 module.exports = router;
-

@@ -1,52 +1,52 @@
 const express = require('express');
-const db = require('../db');
+const Feedback = require('../models/Feedback');
 const router = express.Router();
 
-// Create table matching the actual TIEI feedback sheet structure
-db.exec(`
-  CREATE TABLE IF NOT EXISTS visitor_feedback (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    company           TEXT,
-    visit_date        TEXT,
-    visit_time        TEXT,
-    visit_purpose     TEXT,
-    visitors_json     TEXT,       -- JSON array of visitor objects
-    feedback_rows_json TEXT,      -- JSON array of {feedback, from} objects
-    submitted_at      TEXT DEFAULT (datetime('now'))
-  );
-`);
-
-// POST /api/feedback  — visitor submits the form
-router.post('/feedback', (req, res) => {
+// POST /api/feedback — visitor submits the form
+router.post('/feedback', async (req, res) => {
   const { company, visit_date, visit_time, visit_purpose, visitors = [], feedback_rows = [] } = req.body;
   if (!company?.trim()) return res.status(400).json({ error: 'Company name is required' });
+
   try {
-    db.prepare(`
-      INSERT INTO visitor_feedback (company, visit_date, visit_time, visit_purpose, visitors_json, feedback_rows_json)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(
-      company || '',
-      visit_date || '',
-      visit_time || '',
-      visit_purpose || '',
-      JSON.stringify(visitors),
-      JSON.stringify(feedback_rows)
-    );
-    res.json({ success: true });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Failed to submit feedback', detail: e.message });
+    const fb = new Feedback({
+      company: company.trim(),
+      visit_date: visit_date || '',
+      visit_time: visit_time || '',
+      visit_purpose: visit_purpose || '',
+      visitors,
+      feedback_rows: feedback_rows.map(r => ({ feedback: r.feedback || '', from: r.from || '' })),
+      submitted_at: new Date()
+    });
+
+    await fb.save();
+    res.json({ success: true, feedback: fb });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to submit feedback', detail: err.message });
   }
 });
 
-// GET /api/feedback  — staff views all responses
-router.get('/feedback', (req, res) => {
+// GET /api/feedback — staff views all responses
+router.get('/feedback', async (req, res) => {
   try {
-    const rows = db.prepare(`SELECT * FROM visitor_feedback ORDER BY submitted_at DESC`).all();
+    const docs = await Feedback.find().sort({ submitted_at: -1 });
+
+    // Format for frontend
+    const rows = docs.map(d => ({
+      id: d._id.toString(),
+      company: d.company,
+      visit_date: d.visit_date,
+      visit_time: d.visit_time,
+      visit_purpose: d.visit_purpose,
+      visitors_json: JSON.stringify(d.visitors || []),
+      feedback_rows_json: JSON.stringify(d.feedback_rows || []),
+      submitted_at: d.submitted_at
+    }));
+
     res.json(rows);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Failed to fetch feedback', detail: e.message });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch feedback', detail: err.message });
   }
 });
 

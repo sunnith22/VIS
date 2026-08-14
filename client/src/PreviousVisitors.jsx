@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { api } from './api.js';
 import VisitDetailModal from './VisitDetailModal.jsx';
 
 const T = {
@@ -41,8 +42,8 @@ export default function PreviousVisitors() {
     setError('');
     try {
       const [resVisits, resSearch] = await Promise.all([
-        fetch('/api/visits').then(r => r.json()),
-        fetch(`/api/visitors/search?field=${field}&q=${encodeURIComponent(query.trim())}`).then(r => r.json())
+        api.getVisits().catch(() => []),
+        api.searchVisitors(field, query.trim()).catch(() => [])
       ]);
       setAllVisits(Array.isArray(resVisits) ? resVisits : []);
       setVisitorRecords(Array.isArray(resSearch) ? resSearch : []);
@@ -52,6 +53,7 @@ export default function PreviousVisitors() {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     loadData();

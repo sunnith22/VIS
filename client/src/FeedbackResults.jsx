@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { api } from './api.js';
 
 const T = { navy:'#7C3AED', accent:'#7C3AED', green:'#059669', bg:'#F0F4FA', border:'#CBD5E1', text:'#1E293B', muted:'#64748B' };
 
@@ -105,7 +106,7 @@ export default function FeedbackResults() {
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
-    fetch('/api/feedback').then(r => r.json()).then(data => {
+    api.getFeedback().then(data => {
       setResponses(Array.isArray(data) ? data : []);
       setLoading(false);
     }).catch(() => setLoading(false));

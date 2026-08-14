@@ -35,10 +35,27 @@ const GLOBAL_CSS = `
   ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 `;
 
-const initForm = () => ({
-  company: '', visitDate: new Date().toISOString().slice(0, 10),
-  visitStart: '09:00', visitEnd: '17:00',
-  visitAdvisor: '', visitNo: '', visitPurpose: '', visitors: [],
+export const initForm = () => ({
+  company: '', 
+  visitDate: new Date().toISOString().slice(0, 10),
+  visitStart: '09:00', 
+  visitEnd: '17:00',
+  visitAdvisor: '', 
+  visitNo: '1st', 
+  visitPurpose: '', 
+  visitors: [],
+  topAttendees: [
+    { id: 1, name: 'MD San', role: 'MD', email: '', schedule: {} },
+    { id: 2, name: 'GMD San', role: 'GMD', email: '', schedule: {} },
+  ],
+  hotel: { required: false, detail: '' },
+  taxi: { required: false, rows: [{ id: 1, date: '', time: '', from: '', to: '' }] },
+  lunch: { required: false, date: '', type: 'Special', venue: 'VIP' },
+  plantTour: 'Bus',
+  matrix: {},
+  rehearsals: { mdSan: true, gmdSan: true, svp: false, vp: false, avp: false, hdd: false, count: 3 },
+  prevVisitDate: '',
+  visitedBefore: 'No'
 });
 
 const NAV = [
@@ -48,7 +65,7 @@ const NAV = [
   { id: 'feedback',  label: 'Feedback' },
 ];
 
-/* ── Top horizontal nav (Veris style) ──────────────────────────────────────── */
+/* ── Top horizontal nav ───────────────────────────────────────────────────── */
 function TopNav({ active, onNav, screen }) {
   const isVis = ['vis1', 'vis2', 'vis3'].includes(screen);
   const step = screen === 'vis1' ? '1/3' : screen === 'vis2' ? '2/3' : screen === 'vis3' ? '3/3' : null;
@@ -104,7 +121,6 @@ function TopNav({ active, onNav, screen }) {
                   borderRadius: 10, padding: '1px 7px',
                 }}>{step}</span>
               )}
-              {/* Active underline */}
               {isActive && (
                 <span style={{
                   position: 'absolute', bottom: -14, left: 12, right: 12, height: 2.5,
@@ -120,7 +136,7 @@ function TopNav({ active, onNav, screen }) {
 }
 
 /* ── Page shell ────────────────────────────────────────────────────────────── */
-function Shell({ screen, goHome, navigate, children, title, showBack }) {
+function Shell({ screen, goHome, navigate, children, title, showBack, onBackClick }) {
   return (
     <div style={{ minHeight: '100vh', background: V.bg, display: 'flex', flexDirection: 'column' }}>
       <TopNav active={screen} onNav={navigate} screen={screen} />
@@ -130,13 +146,13 @@ function Shell({ screen, goHome, navigate, children, title, showBack }) {
           padding: '12px 28px', display: 'flex', alignItems: 'center', gap: 12,
         }}>
           {showBack && (
-            <button onClick={goHome} style={{
+            <button onClick={onBackClick || goHome} style={{
               display: 'flex', alignItems: 'center', gap: 5,
               background: V.purpleLt, border: `1px solid ${V.purpleMid}`,
-              borderRadius: 6, padding: '5px 12px', cursor: 'pointer',
+              borderRadius: 6, padding: '6px 14px', cursor: 'pointer',
               fontSize: 12, color: V.purple, fontWeight: 600,
             }}>
-              ← Home
+              ← Back
             </button>
           )}
           {title && <h1 style={{ fontSize: 15, fontWeight: 600, color: V.text }}>{title}</h1>}
@@ -164,9 +180,6 @@ export default function App() {
   const navigate = (id) => {
     if (id === 'dashboard') { goHome(); return; }
     if (id === 'vis1') {
-      setVisitId(null);
-      setAgenda([]);
-      setFormData(initForm());
       setScreen('vis1');
       return;
     }
@@ -188,41 +201,47 @@ export default function App() {
       )}
 
       {screen === 'previous' && (
-        <Shell screen="previous" goHome={goHome} navigate={navigate} title="Past Visitor Records" showBack>
+        <Shell screen="previous" goHome={goHome} navigate={navigate} title="Past Visitor Records" showBack onBackClick={goHome}>
           <PreviousVisitors />
         </Shell>
       )}
 
       {screen === 'feedback' && (
-        <Shell screen="feedback" goHome={goHome} navigate={navigate} title="Visitor Feedback" showBack>
+        <Shell screen="feedback" goHome={goHome} navigate={navigate} title="Visitor Feedback" showBack onBackClick={goHome}>
           <FeedbackResults />
         </Shell>
       )}
 
       {screen === 'vis1' && (
-        <Shell screen="vis1" goHome={goHome} navigate={navigate} title="New VIS Sheet — Step 1 of 3" showBack>
+        <Shell screen="vis1" goHome={goHome} navigate={navigate} title="New VIS Sheet — Step 1 of 3" showBack onBackClick={goHome}>
           <Screen1
             formData={formData}
             setFormData={setFormData}
-            visitId={visitId}
-            onNext={(id) => { setVisitId(id); setScreen('vis2'); }}
+            onBack={goHome}
+            onNext={() => setScreen('vis2')}
           />
         </Shell>
       )}
 
       {screen === 'vis2' && (
-        <Shell screen="vis2" goHome={goHome} navigate={navigate} title="Agenda Builder — Step 2 of 3" showBack>
+        <Shell screen="vis2" goHome={goHome} navigate={navigate} title="Agenda Builder — Step 2 of 3" showBack onBackClick={() => setScreen('vis1')}>
           <Screen2
             formData={formData}
+            setFormData={setFormData}
             visitId={visitId}
+            setVisitId={setVisitId}
             onBack={() => setScreen('vis1')}
-            onNext={(rows) => { setAgenda(rows); setScreen('vis3'); }}
+            onNext={(rows, savedId) => { 
+              setAgenda(rows); 
+              if (savedId) setVisitId(savedId);
+              setScreen('vis3'); 
+            }}
           />
         </Shell>
       )}
 
       {screen === 'vis3' && (
-        <Shell screen="vis3" goHome={goHome} navigate={navigate} title="Summary & Confirmation — Step 3 of 3" showBack>
+        <Shell screen="vis3" goHome={goHome} navigate={navigate} title="Summary & Confirmation — Step 3 of 3" showBack onBackClick={() => setScreen('vis2')}>
           <Screen3
             formData={formData}
             agenda={agenda}
@@ -235,6 +254,3 @@ export default function App() {
     </>
   );
 }
-
-
-

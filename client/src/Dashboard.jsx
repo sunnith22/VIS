@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { api } from './api.js';
 import VisitDetailModal from './VisitDetailModal.jsx';
+
 
 const C = {
   bg: '#F8FAFC', card: '#ffffff', border: '#E2E8F0',
@@ -85,10 +87,10 @@ export default function Dashboard({ onNewVIS, onPrevVisitors, onFeedback }) {
   const loadData = () => {
     setLoading(true);
     Promise.all([
-      fetch('/api/dashboard/stats').then(r => r.json()).catch(() => ({})),
-      fetch('/api/visits').then(r => r.json()).catch(() => []),
+      api.getDashboard().catch(() => ({})),
+      api.getVisits().catch(() => []),
     ]).then(([s, v]) => {
-      setStats(s);
+      setStats(s || {});
       setRecent(Array.isArray(v) ? v.slice(0, 10) : []);
       setLoading(false);
     });
