@@ -3,10 +3,54 @@
 // company, date/time, visit purpose, visitor details, free-text feedback rows
 import { useState, useEffect } from 'react';
 
-const T = { navy:'#7C3AED', accent:'#7C3AED', green:'#059669', greenLt:'#DCFCE7', border:'#CBD5E1', bg:'#F0F4FA', muted:'#64748B', text:'#1E293B' };
+const T = { 
+  navy: '#7C3AED', 
+  accent: '#7C3AED', 
+  green: '#059669', 
+  greenLt: '#DCFCE7', 
+  border: '#CBD5E1', 
+  bg: '#F0F4FA', 
+  muted: '#64748B', 
+  text: '#1E293B' 
+};
 
-const inputStyle = { width:'100%', padding:'8px 11px', border:`1.5px solid #CBD5E1`, borderRadius:6, fontSize:13, color:'#1E293B', background:'white', boxSizing:'border-box', fontFamily:"'Segoe UI',Arial,sans-serif", outline:'none' };
-const labelStyle = { fontSize:10, fontWeight:700, color:'#64748B', textTransform:'uppercase', letterSpacing:0.5, marginBottom:4, display:'block' };
+const inputStyle = { 
+  width: '100%', 
+  padding: '8px 11px', 
+  border: `1.5px solid #CBD5E1`, 
+  borderRadius: 6, 
+  fontSize: 13, 
+  color: '#1E293B', 
+  background: 'white', 
+  boxSizing: 'border-box', 
+  fontFamily: "'Segoe UI',Arial,sans-serif", 
+  outline: 'none' 
+};
+
+const labelStyle = { 
+  fontSize: 10, 
+  fontWeight: 700, 
+  color: '#64748B', 
+  textTransform: 'uppercase', 
+  letterSpacing: 0.5, 
+  marginBottom: 4, 
+  display: 'block' 
+};
+
+// ── Top-level Section component (preserves DOM focus across renders) ────────
+function Section({ num, title, children }) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ background: T.navy, color: 'white', padding: '8px 14px', borderRadius: '8px 8px 0 0', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>{num}</span>
+        {title}
+      </div>
+      <div style={{ background: 'white', border: `1px solid ${T.border}`, borderTop: 'none', borderRadius: '0 0 8px 8px', padding: '14px 16px' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export default function FeedbackForm() {
   // Pre-fill from URL params if staff shares a visit-specific link
@@ -64,18 +108,6 @@ export default function FeedbackForm() {
         <div style={{ fontSize:22, fontWeight:800, color:T.navy, marginBottom:8 }}>Thank You!</div>
         <div style={{ fontSize:13, color:T.muted, lineHeight:1.6 }}>Your feedback has been submitted successfully. It will be reviewed by the TIEI team.</div>
         <div style={{ marginTop:16, fontSize:11, color:T.muted }}>You may now close this page.</div>
-      </div>
-    </div>
-  );
-
-  const Section = ({ num, title, children }) => (
-    <div style={{ marginBottom:20 }}>
-      <div style={{ background:T.navy, color:'white', padding:'8px 14px', borderRadius:'8px 8px 0 0', fontWeight:700, fontSize:12, display:'flex', alignItems:'center', gap:8 }}>
-        <span style={{ background:'rgba(255,255,255,0.2)', borderRadius:'50%', width:20, height:20, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800 }}>{num}</span>
-        {title}
-      </div>
-      <div style={{ background:'white', border:`1px solid ${T.border}`, borderTop:'none', borderRadius:'0 0 8px 8px', padding:'14px 16px' }}>
-        {children}
       </div>
     </div>
   );
