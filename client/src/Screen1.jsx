@@ -861,7 +861,7 @@ export default function Screen1({ formData, setFormData, onNext, onBack }) {
           {/* Section ⑧: Rehearsals */}
           <SectionCard num="⑧" title="Rehearsals">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
-              {[['mdSan', 'MD San'], ['gmdSan', 'GMD San'], ['svp', 'SVP'], ['vp', 'VP'], ['avp', 'AVP'], ['hdd', 'HDD']].map(([key, lbl]) => (
+              {[['mdSan', 'MD San'], ['DmdSan', 'DMD San'], ['svp', 'SVP'], ['vp', 'VP'], ['avp', 'AVP'], ['hdd', 'HDD']].map(([key, lbl]) => (
                 <Checkbox
                   key={key}
                   checked={!!(formData.rehearsals || {})[key]}

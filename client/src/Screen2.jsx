@@ -328,7 +328,7 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
                           <span>(Dropdown or Enter Custom)</span>
                         </div>
 
-                        {/* Quick Selection Dropdown */}
+                         {/* Quick Selection Dropdown */}
                         <select
                           onChange={e => {
                             const val = e.target.value;

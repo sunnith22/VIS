@@ -73,12 +73,12 @@ export default function Screen3({ formData = {}, agenda = [], visitId, onBack, o
         if (sentRecipients && sentRecipients.length > 0) {
           setEmailStatus({
             type: 'success',
-            msg: `🎉 Visit saved in Database & Agenda email successfully dispatched to: ${sentRecipients.join(', ')}`
+            msg: `Visit saved in Database & Agenda email successfully dispatched to: ${sentRecipients.join(', ')}`
           });
         } else {
           setEmailStatus({
             type: 'success',
-            msg: '🎉 Visit successfully saved to Database! (No attendee emails were provided for dispatch).'
+            msg: 'Visit successfully saved to Database! (No attendee emails were provided for dispatch).'
           });
         }
       } else {

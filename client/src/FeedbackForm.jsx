@@ -104,7 +104,7 @@ export default function FeedbackForm() {
   if (submitted) return (
     <div style={{ minHeight:'100vh', background:T.bg, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'Segoe UI',Arial,sans-serif" }}>
       <div style={{ background:'white', border:`1px solid ${T.border}`, borderRadius:16, padding:'48px 40px', textAlign:'center', maxWidth:400, boxShadow:'0 8px 32px rgba(0,0,0,0.1)' }}>
-        <div style={{ fontSize:52, marginBottom:14 }}>🙏</div>
+        {/* <div style={{ fontSize:52, marginBottom:14 }}>🙏</div> */}
         <div style={{ fontSize:22, fontWeight:800, color:T.navy, marginBottom:8 }}>Thank You!</div>
         <div style={{ fontSize:13, color:T.muted, lineHeight:1.6 }}>Your feedback has been submitted successfully. It will be reviewed by the TIEI team.</div>
         <div style={{ marginTop:16, fontSize:11, color:T.muted }}>You may now close this page.</div>

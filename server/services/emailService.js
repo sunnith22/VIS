@@ -148,8 +148,8 @@ function generateAgendaEmailHtml(visit) {
 
     <!-- Footer -->
     <div style="background-color: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11px; color: #64748b;">
-      <p style="margin: 0 0 4px;">This is an automated notification from the <strong>TIEI Visitor Management System</strong>.</p>
-      <p style="margin: 0;">Toyota Industries Engine India • Confidential</p>
+      <p style="margin: 0 0 4px;">This is an automated mail <strong>DO NOT REPLY</strong>.</p>
+      <p style="margin: 0;">Toyota Industries Engine India</p>
     </div>
 
   </div>
