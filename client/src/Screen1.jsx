@@ -126,7 +126,7 @@ const CircleToggle = ({ checked, onChange }) => (
 );
 
 // ── Visit Purpose Matrix ───────────────────────────────────────────────────────
-const MATRIX_ROWS = ["Learn System / Facility", "Glide System / Facility", "Assess Mgmt/Capability"];
+const MATRIX_ROWS = ["Learn System / Facility", "Guide System / Facility", "Assess Mgmt/Capability"];
 const MATRIX_COLS = ["Customer", "Parts", "Equip/Tools", "Group Co.", "Govt", "Others"];
 
 function VisitPurposeMatrix({ matrix = {}, setMatrix }) {
@@ -164,7 +164,7 @@ function VisitPurposeMatrix({ matrix = {}, setMatrix }) {
 }
 
 // ── TIEI Top Attendees ─────────────────────────────────────────────────────────
-const SESSION_COLS = ["Opening EBR", "Lunch", "Gemba", "Closing EBR"];
+const SESSION_COLS = ["Opening", "Lunch", "Gemba", "Closing"];
 
 function generateDates(startDate) {
   if (!startDate) return ['Visit Date'];
@@ -575,15 +575,15 @@ export default function Screen1({ formData, setFormData, onNext, onBack }) {
           <SectionCard num="①" title="Company & Visit Details">
             <Label required>Name of Company</Label>
             <TInput value={formData.company || ''} onChange={e => upd('company', e.target.value)} placeholder="e.g. Toyota Kirloskar Motor" style={{ marginBottom: 10 }} />
-            
+
             <Label required>Visit Purpose</Label>
             <textarea value={formData.visitPurpose || ''} onChange={e => upd('visitPurpose', e.target.value)} rows={3}
               placeholder="e.g. Production system assessment & Gemba review"
               style={{ width: "100%", padding: "6px 9px", border: `1px solid ${T.border}`, borderRadius: 5, fontSize: 12, resize: "vertical", boxSizing: "border-box", marginBottom: 10, fontFamily: "'Segoe UI',Arial,sans-serif" }} />
-            
+
             <Label>Date of Previous Visit</Label>
             <TInput type="date" value={formData.prevVisitDate || ''} onChange={e => upd('prevVisitDate', e.target.value)} style={{ marginBottom: 10 }} />
-            
+
             <Label>Visited Before?</Label>
             <div style={{ display: "flex", gap: 14, marginTop: 2 }}>
               <Radio checked={formData.visitedBefore === 'Yes'} onChange={() => upd('visitedBefore', 'Yes')} label="Yes" />
@@ -614,6 +614,7 @@ export default function Screen1({ formData, setFormData, onNext, onBack }) {
             ) : (
               <div style={{ fontSize: 11, color: T.muted, background: '#F8FAFC', padding: '6px 8px', borderRadius: 4, border: `1px dashed ${T.border}` }}>
                 ℹ️ No Hotel Booking Required
+                ℹ️ If Required Contact Admin Dept
               </div>
             )}
           </SectionCard>
@@ -636,7 +637,7 @@ export default function Screen1({ formData, setFormData, onNext, onBack }) {
                 onChange={() => upd('taxi', { ...formData.taxi, required: !formData.taxi?.required })}
               />
             </div>
-            
+
             {formData.taxi?.required ? (
               <div>
                 {(formData.taxi?.rows || []).map((row, idx) => (
@@ -757,7 +758,7 @@ export default function Screen1({ formData, setFormData, onNext, onBack }) {
                       </td>
                     </tr>
                   ))}
-                  
+
                   {/* Row to add new visitor */}
                   <tr style={{ background: "#FAFBFF" }}>
                     <td style={{ padding: "5px 7px", color: T.muted, fontSize: 11 }}>{(formData.visitors || []).length + 1}</td>
@@ -861,7 +862,7 @@ export default function Screen1({ formData, setFormData, onNext, onBack }) {
           {/* Section ⑧: Rehearsals */}
           <SectionCard num="⑧" title="Rehearsals">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
-              {[['mdSan', 'MD San'], ['DmdSan', 'DMD San'], ['svp', 'SVP'], ['vp', 'VP'], ['avp', 'AVP'], ['hdd', 'HDD']].map(([key, lbl]) => (
+              {[['md', 'MD'], ['gmd', 'GMD'], ['svp', 'SVP'], ['vp', 'VP'], ['hod', 'HOD']].map(([key, lbl]) => (
                 <Checkbox
                   key={key}
                   checked={!!(formData.rehearsals || {})[key]}
@@ -888,7 +889,7 @@ export default function Screen1({ formData, setFormData, onNext, onBack }) {
                 onChange={() => upd('lunch', { ...formData.lunch, required: !formData.lunch?.required, date: formData.visitDate || '' })}
               />
             </div>
-            
+
             {formData.lunch?.required ? (
               <div>
                 <Label required>Date</Label>
@@ -908,10 +909,10 @@ export default function Screen1({ formData, setFormData, onNext, onBack }) {
                 </TSelect>
                 <Label required>Venue</Label>
                 <TSelect
-                  value={formData.lunch?.venue || 'VIP'}
+                  value={formData.lunch?.venue || 'GD Canteen'}
                   onChange={e => upd('lunch', { ...formData.lunch, venue: e.target.value })}
                 >
-                  {['VIP', 'Main Hall', 'Conference Room', 'Cafeteria'].map(v => <option key={v}>{v}</option>)}
+                  {['VIP', 'GD Canteen', 'TNGA Canteen'].map(v => <option key={v}>{v}</option>)}
                 </TSelect>
               </div>
             ) : (

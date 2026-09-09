@@ -57,9 +57,16 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
   const [transit, setTransit] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Area & Activity Selection State
   const [selAreaId, setSelAreaId] = useState('');
+  const [customAreaName, setCustomAreaName] = useState('');
+
   const [selSubId, setSelSubId] = useState('');
+  const [customActivityName, setCustomActivityName] = useState('');
+
   const [selTransitId, setSelTransitId] = useState('');
+  const [customTransitLabel, setCustomTransitLabel] = useState('');
+
   const [customPic, setCustomPic] = useState('');
   const [customSupport, setCustomSupport] = useState('');
   const [customMin, setCustomMin] = useState('');
@@ -95,6 +102,14 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
     setSelAreaId(val);
     setSelSubId('');
     setSelTransitId('');
+    setCustomAreaName('');
+    setCustomActivityName('');
+    setCustomTransitLabel('');
+    if (val === 'other') {
+      setCustomPic('');
+      setCustomMin('15');
+      return;
+    }
     const subs = subsForArea(val);
     if (subs.length) { 
       setCustomPic(subs[0].default_pic || ''); 
@@ -107,6 +122,11 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
 
   const onSubChange = (val) => {
     setSelSubId(val);
+    setCustomActivityName('');
+    if (val === 'other') {
+      if (!customMin) setCustomMin('15');
+      return;
+    }
     const s = subAreas.find(x => String(x.id) === String(val));
     if (s) { 
       setCustomPic(s.default_pic || ''); 
@@ -118,6 +138,13 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
     setSelTransitId(val);
     setSelAreaId(''); 
     setSelSubId('');
+    setCustomAreaName('');
+    setCustomActivityName('');
+    setCustomTransitLabel('');
+    if (val === 'other') {
+      setCustomMin('15');
+      return;
+    }
     const t = transit.find(x => String(x.id) === String(val));
     if (t) { 
       setCustomPic(t.default_pic || ''); 
@@ -145,29 +172,71 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
 
   const addRow = () => {
     let areaName, activity, pic, dur, support;
-    if (selTransitId && !selAreaId) {
-      const t = transit.find(x => String(x.id) === String(selTransitId));
-      if (!t) return;
-      areaName = "Transit"; 
-      activity = t.label; 
-      pic = customPic || t.default_pic || ''; 
+
+    if (selTransitId) {
+      if (selTransitId === 'other') {
+        if (!customTransitLabel.trim()) {
+          setGenError('Please enter custom transit / break detail.');
+          return;
+        }
+        areaName = "Transit";
+        activity = customTransitLabel.trim();
+      } else {
+        const t = transit.find(x => String(x.id) === String(selTransitId));
+        if (!t) return;
+        areaName = "Transit"; 
+        activity = t.label; 
+      }
+      pic = customPic || ''; 
       support = customSupport || '';
-      dur = parseInt(customMin) || t.default_duration_min;
+      dur = parseInt(customMin) || 10;
     } else {
-      if (!selAreaId || !selSubId) return;
-      const s = subAreas.find(x => String(x.id) === String(selSubId));
-      if (!s) return;
-      areaName = selectedArea?.area_name; 
-      activity = s.activity_name; 
-      pic = customPic || s.default_pic || ''; 
+      if (!selAreaId) {
+        setGenError('Please select a plant area or transit item.');
+        return;
+      }
+      if (selAreaId === 'other') {
+        if (!customAreaName.trim()) {
+          setGenError('Please enter custom Area name.');
+          return;
+        }
+        if (!customActivityName.trim()) {
+          setGenError('Please enter custom Activity name.');
+          return;
+        }
+        areaName = customAreaName.trim();
+        activity = customActivityName.trim();
+      } else {
+        if (!selSubId) {
+          setGenError('Please select an activity or choose "Other" to type custom activity.');
+          return;
+        }
+        areaName = selectedArea?.area_name || 'Area';
+        if (selSubId === 'other') {
+          if (!customActivityName.trim()) {
+            setGenError('Please enter custom Activity name.');
+            return;
+          }
+          activity = customActivityName.trim();
+        } else {
+          const s = subAreas.find(x => String(x.id) === String(selSubId));
+          if (!s) return;
+          activity = s.activity_name;
+        }
+      }
+      pic = customPic || ''; 
       support = customSupport || '';
-      dur = parseInt(customMin) || s.default_duration_min;
+      dur = parseInt(customMin) || 15;
     }
+
     setRows(p => [...p, { rowId: nextRowId, area: areaName, activity, pic: pic || '', support: support || '', durationMin: Math.max(1, dur || 1) }]);
     setNextRowId(n => n + 1);
     setSelAreaId(''); 
     setSelSubId(''); 
-    setSelTransitId(''); 
+    setSelTransitId('');
+    setCustomAreaName('');
+    setCustomActivityName('');
+    setCustomTransitLabel('');
     setCustomPic(''); 
     setCustomSupport('');
     setCustomMin('');
@@ -274,41 +343,105 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
                 </div>
                 <div style={{ padding: "14px" }}>
 
+                  {/* Step 1: Area Master Selection */}
                   <div style={{ fontSize: 11, fontWeight: 700, color: T.navy, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>
                     Step 1 — Select Plant Area
                   </div>
-                  <select value={selAreaId} onChange={e => onAreaChange(e.target.value)} style={{ ...selStyle, width: "100%" }}>
+                  <select
+                    value={selAreaId}
+                    onChange={e => onAreaChange(e.target.value)}
+                    style={{ ...selStyle, width: "100%", borderColor: selAreaId === 'other' ? "#059669" : (selAreaId ? T.navy : T.border) }}
+                  >
                     <option value="">— Choose an Area —</option>
                     {areas.map(a => <option key={a.id} value={a.id}>{a.icon} {a.area_name}</option>)}
+                    <option value="other">✍️ Other (Enter Custom Area)...</option>
                   </select>
 
+                  {/* Custom Area Manual Input */}
+                  {selAreaId === 'other' && (
+                    <div style={{ marginTop: 8, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 6, padding: "8px 10px" }}>
+                      <div style={{ fontSize: 10, color: "#065F46", fontWeight: 700, marginBottom: 3 }}>Custom Area / Location Name *</div>
+                      <input
+                        value={customAreaName}
+                        onChange={e => setCustomAreaName(e.target.value)}
+                        placeholder="e.g. Main Gate, Warehouse, Utility Building"
+                        style={{ width: "100%", padding: "6px 9px", border: "1px solid #6EE7B7", borderRadius: 4, fontSize: 12, boxSizing: "border-box", background: "white" }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Transit Selection */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0", color: T.muted, fontSize: 11 }}>
                     <div style={{ flex: 1, height: 1, background: T.border }} />OR add transit<div style={{ flex: 1, height: 1, background: T.border }} />
                   </div>
 
-                  <select value={selTransitId} onChange={e => onTransitChange(e.target.value)} style={{ ...selStyle, width: "100%", borderColor: selTransitId ? "#7C3AED" : T.border }}>
+                  <select
+                    value={selTransitId}
+                    onChange={e => onTransitChange(e.target.value)}
+                    style={{ ...selStyle, width: "100%", borderColor: selTransitId === 'other' ? "#059669" : (selTransitId ? "#7C3AED" : T.border) }}
+                  >
                     <option value="">— Transit / Break —</option>
                     {transit.map(t => <option key={t.id} value={t.id}>🚌 {t.label}</option>)}
+                    <option value="other">✍️ Other (Enter Custom Transit / Break)...</option>
                   </select>
 
-                  {selAreaId && selectedArea && (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: selectedArea.color_hex, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>
-                        Step 2 — Select Activity in {selectedArea.area_name}
-                      </div>
-                      <div style={{ background: colorSet(selectedArea.color_hex).bg, border: `1.5px solid ${selectedArea.color_hex}`, borderRadius: 6, padding: "6px 10px", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 20 }}>{selectedArea.icon}</span>
-                        <span style={{ fontWeight: 700, color: selectedArea.color_hex, fontSize: 13 }}>{selectedArea.area_name}</span>
-                        <span style={{ fontSize: 11, color: selectedArea.color_hex, opacity: 0.7 }}>{subsForArea(selAreaId).length} activities</span>
-                      </div>
-                      <select value={selSubId} onChange={e => onSubChange(e.target.value)} style={{ ...selStyle, width: "100%", borderColor: selSubId ? selectedArea.color_hex : T.border }}>
-                        <option value="">— Choose Activity —</option>
-                        {subsForArea(selAreaId).map(s => <option key={s.id} value={s.id}>{s.activity_name} ({s.default_duration_min} min)</option>)}
-                      </select>
+                  {/* Custom Transit Manual Input */}
+                  {selTransitId === 'other' && (
+                    <div style={{ marginTop: 8, background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 6, padding: "8px 10px" }}>
+                      <div style={{ fontSize: 10, color: "#6D28D9", fontWeight: 700, marginBottom: 3 }}>Custom Transit / Break Detail *</div>
+                      <input
+                        value={customTransitLabel}
+                        onChange={e => setCustomTransitLabel(e.target.value)}
+                        placeholder="e.g. Bus Transfer, Tea Break, Restroom Break"
+                        style={{ width: "100%", padding: "6px 9px", border: "1px solid #C4B5FD", borderRadius: 4, fontSize: 12, boxSizing: "border-box", background: "white" }}
+                      />
                     </div>
                   )}
 
-                  {(selSubId || selTransitId) && (
+                  {/* Step 2: Sub Area Activity Selection */}
+                  {selAreaId && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: selectedArea ? selectedArea.color_hex : T.navy, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                        Step 2 — Select Activity in {selAreaId === 'other' ? (customAreaName || 'Custom Area') : selectedArea?.area_name}
+                      </div>
+
+                      {selectedArea && (
+                        <div style={{ background: colorSet(selectedArea.color_hex).bg, border: `1.5px solid ${selectedArea.color_hex}`, borderRadius: 6, padding: "6px 10px", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 20 }}>{selectedArea.icon}</span>
+                          <span style={{ fontWeight: 700, color: selectedArea.color_hex, fontSize: 13 }}>{selectedArea.area_name}</span>
+                          <span style={{ fontSize: 11, color: selectedArea.color_hex, opacity: 0.7 }}>{subsForArea(selAreaId).length} activities</span>
+                        </div>
+                      )}
+
+                      {selAreaId !== 'other' && (
+                        <select
+                          value={selSubId}
+                          onChange={e => onSubChange(e.target.value)}
+                          style={{ ...selStyle, width: "100%", borderColor: selSubId === 'other' ? "#059669" : (selSubId ? (selectedArea?.color_hex || T.navy) : T.border) }}
+                        >
+                          <option value="">— Choose Activity —</option>
+                          {subsForArea(selAreaId).map(s => <option key={s.id} value={s.id}>{s.activity_name} ({s.default_duration_min} min)</option>)}
+                          <option value="other">✍️ Other (Enter Custom Activity)...</option>
+                        </select>
+                      )}
+
+                      {/* Custom Activity Manual Input */}
+                      {(selAreaId === 'other' || selSubId === 'other') && (
+                        <div style={{ marginTop: 8, background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 6, padding: "8px 10px" }}>
+                          <div style={{ fontSize: 10, color: "#1E40AF", fontWeight: 700, marginBottom: 3 }}>Custom Activity Name *</div>
+                          <input
+                            value={customActivityName}
+                            onChange={e => setCustomActivityName(e.target.value)}
+                            placeholder="e.g. Safety Briefing, Machine Inspection, Q&A Session"
+                            style={{ width: "100%", padding: "6px 9px", border: "1px solid #93C5FD", borderRadius: 4, fontSize: 12, boxSizing: "border-box", background: "white" }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 3: Presenter, Support & Duration */}
+                  {(selTransitId || selAreaId) && (
                     <div style={{ marginTop: 12 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: T.navy, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>
                         Step 3 — Customise Presenter, Support & Duration
@@ -448,7 +581,7 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
                 <div style={{ background: "white", border: `2px dashed ${T.border}`, borderRadius: 8, padding: "40px 20px", textAlign: "center", color: T.muted }}>
                   <div style={{ fontSize: 36, marginBottom: 8 }}>📋</div>
                   <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>No agenda items yet</div>
-                  <div style={{ fontSize: 12 }}>Select an area from the left panel and click "+ Add to Agenda"</div>
+                  <div style={{ fontSize: 12 }}>Select an area or choose "Other" from the left panel and click "+ Add to Agenda"</div>
                 </div>
               )}
 
@@ -462,7 +595,7 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
                         {idx + 1}
                       </div>
                       <div style={{ flexShrink: 0, textAlign: "center", minWidth: 70 }}>
-                        <div style={{ fontSize: 18 }}>{area?.icon || "🚌"}</div>
+                        <div style={{ fontSize: 18 }}>{area?.icon || "✍️"}</div>
                         <div style={{ fontSize: 9, fontWeight: 700, color: c.badge, background: c.bg, border: `1px solid ${c.border}`, borderRadius: 3, padding: "0 4px", marginTop: 1, whiteSpace: "nowrap" }}>
                           {row.area}
                         </div>

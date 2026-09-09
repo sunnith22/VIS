@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { generateAgendaPdfBuffer } = require('./pdfService');
 
 // Helper to create transport
 async function getTransporter() {
@@ -38,112 +39,66 @@ async function getTransporter() {
   }
 }
 
-// Generate formatted HTML Email Template
-function generateAgendaEmailHtml(visit) {
-  const visitors = visit.visitors || [];
-  const agenda = visit.agenda || [];
-  const topAttendees = visit.top_attendees || [];
-
+// Generate Email Body HTML (Professional Cover Note with PDF Notification)
+function generateEmailCoverHtml(visit) {
   const refId = `TIEI-VIS-${(visit.visit_date || '').replace(/-/g, '')}-${(visit._id || visit.id || '').toString().slice(-4).toUpperCase()}`;
-
-  const agendaRowsHtml = agenda.map((r, i) => `
-    <tr style="background-color: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-      <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">${r.sort_order || i + 1}</td>
-      <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; font-weight: bold; color: #7c3aed;">${r.from_time || '—'} - ${r.to_time || '—'}</td>
-      <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #475569;">${r.duration_min || 10}m</td>
-      <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; font-weight: 600; color: #1e293b;">${r.area || '—'}</td>
-      <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #1e293b;">${r.activity_name || '—'}</td>
-      <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">${r.pic || '—'}</td>
-      <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #475569;">${r.support_attendees || '—'}</td>
-    </tr>
-  `).join('');
-
-  const visitorsRowsHtml = visitors.map((v, i) => `
-    <tr style="background-color: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-      <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">${i + 1}</td>
-      <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; font-weight: 600;">${v.title || 'Mr'} ${v.name}</td>
-      <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #64748b;">${v.designation || '—'}</td>
-      <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">${v.company || '—'}</td>
-      <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #64748b;">${v.dept || '—'}</td>
-    </tr>
-  `).join('');
 
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Plant Tour Agenda — ${visit.company_name}</title>
+  <title>Plant Tour Agenda PDF — ${visit.company_name}</title>
 </head>
-<body style="font-family: Arial, Helvetica, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; color: #0f172a;">
-  <div style="max-width: 720px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
+<body style="font-family: Arial, Helvetica, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px; color: #0f172a;">
+  <div style="max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
     
     <!-- Header -->
     <div style="background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 100%); color: #ffffff; padding: 24px; text-align: left;">
-      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #c4b5fd; font-weight: bold;">TIEI VISITOR INSTRUCTION SHEET</div>
-      <h1 style="margin: 6px 0 2px; font-size: 22px; color: #ffffff;">Plant Tour & Meeting Agenda</h1>
-      <div style="font-size: 12px; color: #e9d5ff;">Reference: <strong>${refId}</strong></div>
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #c4b5fd; font-weight: bold;">TIEI VISITOR MANAGEMENT SYSTEM</div>
+      <h1 style="margin: 6px 0 2px; font-size: 20px; color: #ffffff;">Visitor Instruction Sheet & Plant Tour Agenda</h1>
+      <div style="font-size: 12px; color: #e9d5ff;">Reference ID: <strong>${refId}</strong></div>
     </div>
 
-    <!-- Overview Details -->
-    <div style="padding: 20px 24px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-      <table style="width: 100%; border-collapse: collapse;">
-        <tr>
-          <td style="padding: 6px 0; font-size: 13px;"><strong>🏢 Company:</strong> ${visit.company_name || 'Visitor Delegation'}</td>
-          <td style="padding: 6px 0; font-size: 13px;"><strong>📅 Date:</strong> ${visit.visit_date || 'N/A'}</td>
-        </tr>
-        <tr>
-          <td style="padding: 6px 0; font-size: 13px;"><strong>⏰ Time Slot:</strong> ${visit.visit_start || '09:00'} - ${visit.visit_end || '17:00'}</td>
-          <td style="padding: 6px 0; font-size: 13px;"><strong>👤 Visit Advisor:</strong> ${visit.visit_advisor || '—'}</td>
-        </tr>
-        ${visit.visit_no ? `<tr><td colspan="2" style="padding: 6px 0; font-size: 13px;"><strong>🏷️ Visit No.:</strong> ${visit.visit_no}</td></tr>` : ''}
-        ${visit.visit_purpose ? `<tr><td colspan="2" style="padding: 6px 0; font-size: 12px; color: #475569;"><strong>🎯 Purpose:</strong> ${visit.visit_purpose}</td></tr>` : ''}
-      </table>
-    </div>
+    <!-- Message Content -->
+    <div style="padding: 24px; background-color: #ffffff;">
+      <p style="font-size: 14px; margin-top: 0; color: #1e293b;">Dear Attendee,</p>
+      <p style="font-size: 13.5px; color: #334155; line-height: 1.5;">
+        Please find attached the official <strong>Visitor Instruction Sheet & Plant Tour Agenda (PDF)</strong> for the upcoming visit of <strong>${visit.company_name || 'Visitor Delegation'}</strong>.
+      </p>
 
-    <!-- Agenda Schedule -->
-    <div style="padding: 20px 24px;">
-      <h2 style="font-size: 14px; color: #7c3aed; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px; border-bottom: 2px solid #7c3aed; padding-bottom: 6px;">
-        🗓️ Plant Tour Schedule (${agenda.length} Sessions)
-      </h2>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-        <thead>
-          <tr style="background-color: #7c3aed; color: #ffffff;">
-            <th style="padding: 8px 10px; text-align: left; font-size: 11px;">#</th>
-            <th style="padding: 8px 10px; text-align: left; font-size: 11px;">Time</th>
-            <th style="padding: 8px 10px; text-align: left; font-size: 11px;">Duration</th>
-            <th style="padding: 8px 10px; text-align: left; font-size: 11px;">Area</th>
-            <th style="padding: 8px 10px; text-align: left; font-size: 11px;">Activity</th>
-            <th style="padding: 8px 10px; text-align: left; font-size: 11px;">PIC</th>
-            <th style="padding: 8px 10px; text-align: left; font-size: 11px;">Support / Attendees</th>
+      <!-- Overview Details Box -->
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr>
+            <td style="padding: 5px 0; color: #64748b; width: 120px;">🏢 <strong>Company:</strong></td>
+            <td style="padding: 5px 0; color: #0f172a; font-weight: 600;">${visit.company_name || '—'}</td>
           </tr>
-        </thead>
-        <tbody>
-          ${agendaRowsHtml}
-        </tbody>
-      </table>
-
-      <!-- Visitor Attendees -->
-      ${visitors.length > 0 ? `
-      <h2 style="font-size: 13px; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 10px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">
-        👥 Visitor Attendees (${visitors.length})
-      </h2>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
-        <thead>
-          <tr style="background-color: #f1f5f9; color: #475569;">
-            <th style="padding: 6px 10px; text-align: left; font-size: 10px;">#</th>
-            <th style="padding: 6px 10px; text-align: left; font-size: 10px;">Name</th>
-            <th style="padding: 6px 10px; text-align: left; font-size: 10px;">Designation</th>
-            <th style="padding: 6px 10px; text-align: left; font-size: 10px;">Company</th>
-            <th style="padding: 6px 10px; text-align: left; font-size: 10px;">Dept</th>
+          <tr>
+            <td style="padding: 5px 0; color: #64748b;">📅 <strong>Visit Date:</strong></td>
+            <td style="padding: 5px 0; color: #0f172a; font-weight: 600;">${visit.visit_date || '—'}</td>
           </tr>
-        </thead>
-        <tbody>
-          ${visitorsRowsHtml}
-        </tbody>
-      </table>
-      ` : ''}
+          <tr>
+            <td style="padding: 5px 0; color: #64748b;">⏰ <strong>Time Slot:</strong></td>
+            <td style="padding: 5px 0; color: #7c3aed; font-weight: 700;">${visit.visit_start || '09:00'} – ${visit.visit_end || '17:00'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0; color: #64748b;">👤 <strong>Visit Advisor:</strong></td>
+            <td style="padding: 5px 0; color: #0f172a;">${visit.visit_advisor || '—'}</td>
+          </tr>
+          ${visit.visit_no ? `<tr><td style="padding: 5px 0; color: #64748b;">🏷️ <strong>Visit No.:</strong></td><td style="padding: 5px 0; color: #0f172a;">${visit.visit_no}</td></tr>` : ''}
+          ${visit.visit_purpose ? `<tr><td style="padding: 5px 0; color: #64748b;">🎯 <strong>Purpose:</strong></td><td style="padding: 5px 0; color: #334155;">${visit.visit_purpose}</td></tr>` : ''}
+        </table>
+      </div>
 
+      <!-- Attachment Banner -->
+      <div style="background-color: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 24px;">📄</span>
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: #6d28d9;">Attached Document</div>
+          <div style="font-size: 11px; color: #7c3aed;">TIEI_Visitor_Agenda_${(visit.visit_date || '').replace(/-/g, '')}.pdf</div>
+        </div>
+      </div>
     </div>
 
     <!-- Footer -->
@@ -158,7 +113,7 @@ function generateAgendaEmailHtml(visit) {
   `;
 }
 
-// Function to send agenda emails to list of recipients
+// Function to send agenda emails with PDF attachment to list of recipients
 async function sendAgendaEmail(visit, customRecipients = null) {
   try {
     const recipients = [];
@@ -178,25 +133,41 @@ async function sendAgendaEmail(visit, customRecipients = null) {
       return { success: false, message: 'No valid recipient email addresses found.', recipients: [] };
     }
 
+    // 1. Generate PDF Buffer
+    console.log(`📄 Generating PDF document for visit: ${visit.company_name || 'Visitor'}...`);
+    const pdfBuffer = await generateAgendaPdfBuffer(visit);
+
+    // 2. Setup Transporter
     const transporter = await getTransporter();
-    const htmlContent = generateAgendaEmailHtml(visit);
+    const htmlContent = generateEmailCoverHtml(visit);
 
     const fromAddress = process.env.SMTP_FROM || `"TIEI Visitor Management" <${process.env.SMTP_USER || 'no-reply@tiei.toyota.com'}>`;
-    const subject = `Plant Tour Agenda: ${visit.company_name || 'Visitor Delegation'} (${visit.visit_date || 'Upcoming'})`;
+    const subject = `Plant Tour Agenda (PDF Attachment): ${visit.company_name || 'Visitor Delegation'} (${visit.visit_date || 'Upcoming'})`;
 
+    const pdfFileName = `TIEI_Visitor_Agenda_${(visit.visit_date || 'Agenda').replace(/-/g, '')}.pdf`;
+
+    // 3. Send Email with PDF Attachment
     const info = await transporter.sendMail({
       from: fromAddress,
       to: recipients.join(', '),
       subject,
-      html: htmlContent
+      html: htmlContent,
+      attachments: [
+        {
+          filename: pdfFileName,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }
+      ]
     });
 
-    console.log(`✉️ Agenda email dispatched to: ${recipients.join(', ')}`);
+    console.log(`✉️ Agenda email with PDF attachment (${pdfBuffer.length} bytes) dispatched to: ${recipients.join(', ')}`);
 
     return {
       success: true,
       recipients,
-      messageId: info.messageId
+      messageId: info.messageId,
+      pdfSize: pdfBuffer.length
     };
   } catch (err) {
     console.error('❌ Email dispatch failed:', err);
@@ -206,5 +177,5 @@ async function sendAgendaEmail(visit, customRecipients = null) {
 
 module.exports = {
   sendAgendaEmail,
-  generateAgendaEmailHtml
+  generateEmailCoverHtml
 };
