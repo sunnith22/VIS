@@ -78,7 +78,7 @@ function Badge({ status }) {
   );
 }
 
-export default function Dashboard({ onNewVIS, onPrevVisitors, onFeedback }) {
+export default function Dashboard({ onNewVIS, onPrevVisitors, onFeedback, onResumeVisit }) {
   const [stats, setStats]   = useState({});
   const [recent, setRecent] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -174,14 +174,26 @@ export default function Dashboard({ onNewVIS, onPrevVisitors, onFeedback }) {
                 <td style={{ padding: '12px 16px', fontSize: 13, color: C.muted }}>{v.visit_no || '—'}</td>
                 <td style={{ padding: '12px 16px' }}><Badge status={v.status} /></td>
                 <td style={{ padding: '12px 16px' }}>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setSelectedVisitId(v.id); }}
-                    style={{
-                      background: '#F5F3FF', color: '#7C3AED', border: '1px solid #EDE9FE',
-                      borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer'
-                    }}>
-                    {v.status === 'Completed' ? 'View Review →' : 'Review & Complete →'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {v.status === 'Draft' && onResumeVisit && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onResumeVisit(v.id); }}
+                        style={{
+                          background: '#FFFBEB', color: '#D97706', border: '1px solid #FCD34D',
+                          borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                        }}>
+                        ▶ Resume Agenda →
+                      </button>
+                    )}
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setSelectedVisitId(v.id); }}
+                      style={{
+                        background: '#F5F3FF', color: '#7C3AED', border: '1px solid #EDE9FE',
+                        borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                      }}>
+                      {v.status === 'Completed' ? 'View Review →' : 'Review & Details →'}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -195,6 +207,7 @@ export default function Dashboard({ onNewVIS, onPrevVisitors, onFeedback }) {
           visitId={selectedVisitId}
           onClose={() => setSelectedVisitId(null)}
           onUpdated={loadData}
+          onResumeVisit={onResumeVisit}
         />
       )}
     </div>

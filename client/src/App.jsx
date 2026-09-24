@@ -36,33 +36,30 @@ const GLOBAL_CSS = `
 `;
 
 export const initForm = () => ({
-  company: '', 
+  company: '',
   visitDate: new Date().toISOString().slice(0, 10),
-  visitStart: '09:00', 
+  visitStart: '09:00',
   visitEnd: '17:00',
-  visitAdvisor: '', 
-  visitNo: '1st', 
-  visitPurpose: '', 
+  visitAdvisor: '',
+  visitNo: '1st',
+  visitPurpose: '',
   visitors: [],
-  topAttendees: [
-    { id: 1, name: 'MD San', role: 'MD', email: '', schedule: {} },
-    { id: 2, name: 'GMD San', role: 'GMD', email: '', schedule: {} },
-  ],
+  topAttendees: [],
   hotel: { required: false, detail: '' },
   taxi: { required: false, rows: [{ id: 1, date: '', time: '', from: '', to: '' }] },
   lunch: { required: false, date: '', type: 'Special', venue: 'VIP' },
   plantTour: 'Bus',
   matrix: {},
-  rehearsals: { mdSan: true, gmdSan: true, svp: false, vp: false, avp: false, hdd: false, count: 3 },
+  rehearsals: { mdSan: flase, gmdSan: false, svp: false, vp: false, avp: false, hdd: false, count: 0 },
   prevVisitDate: '',
   visitedBefore: 'No'
 });
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard' },
-  { id: 'vis1',      label: 'New VIS' },
-  { id: 'previous',  label: 'Past Visits' },
-  { id: 'feedback',  label: 'Feedback' },
+  { id: 'vis1', label: 'New VIS' },
+  { id: 'previous', label: 'Past Visits' },
+  { id: 'feedback', label: 'Feedback' },
 ];
 
 /* ── Top horizontal nav ───────────────────────────────────────────────────── */
@@ -165,25 +162,96 @@ function Shell({ screen, goHome, navigate, children, title, showBack, onBackClic
 
 /* ── Root App ──────────────────────────────────────────────────────────────── */
 export default function App() {
-  const [screen, setScreen]     = useState('dashboard');
-  const [visitId, setVisitId]   = useState(null);
-  const [agenda, setAgenda]     = useState([]);
+  const [screen, setScreen] = useState('dashboard');
+  const [activeStep, setActiveStep] = useState('vis1');
+  const [visitId, setVisitId] = useState(null);
+  const [agenda, setAgenda] = useState([]);
   const [formData, setFormData] = useState(initForm());
 
   const goHome = () => {
     setScreen('dashboard');
+    setActiveStep('vis1');
     setVisitId(null);
     setAgenda([]);
     setFormData(initForm());
   };
 
   const navigate = (id) => {
-    if (id === 'dashboard') { goHome(); return; }
+    if (id === 'dashboard') {
+      setScreen('dashboard');
+      return;
+    }
     if (id === 'vis1') {
-      setScreen('vis1');
+      setScreen(activeStep || (agenda.length > 0 ? 'vis2' : 'vis1'));
       return;
     }
     setScreen(id);
+  };
+
+  const setStep = (step) => {
+    setActiveStep(step);
+    setScreen(step);
+  };
+
+  const handleResumeVisit = async (visitOrId) => {
+    try {
+      const id = typeof visitOrId === 'object' ? (visitOrId.id || visitOrId._id) : visitOrId;
+      if (!id) return;
+      const full = await api.getFullVisit(id);
+      const v = full.visit || full;
+
+      const mappedForm = {
+        company: v.company_name || '',
+        visitDate: v.visit_date || new Date().toISOString().slice(0, 10),
+        visitStart: v.visit_start || '09:00',
+        visitEnd: v.visit_end || '17:00',
+        visitAdvisor: v.visit_advisor || '',
+        visitNo: v.visit_no || '1st',
+        visitPurpose: v.visit_purpose || '',
+        visitors: (full.visitors || v.visitors || []).map(vis => ({
+          title: vis.title || 'Mr',
+          name: vis.name || '',
+          designation: vis.designation || '',
+          company: vis.company || '',
+          dept: vis.dept || '',
+          visitedBefore: Boolean(vis.visited_before),
+          prevDate: vis.prev_visit_date || ''
+        })),
+        topAttendees: (full.top_attendees || v.top_attendees || []).map(att => ({
+          name: att.name || '',
+          role: att.role || '',
+          email: att.email || '',
+          schedule: att.schedule || {}
+        })),
+        hotel: { required: false, detail: '' },
+        taxi: { required: false, rows: [{ id: 1, date: '', time: '', from: '', to: '' }] },
+        lunch: { required: false, date: '', type: 'Special', venue: 'VIP' },
+        plantTour: 'Bus',
+        matrix: {},
+        rehearsals: { mdSan: false, gmdSan: false, svp: false, vp: false, avp: false, hdd: false, count: 0 },
+        prevVisitDate: '',
+        visitedBefore: 'No'
+      };
+
+      const mappedAgenda = (full.agenda || v.agenda || []).map((a, idx) => ({
+        rowId: idx + 1,
+        area: a.area || 'Area',
+        activity: a.activity_name || a.activity || '',
+        pic: a.pic || '',
+        support: a.support_attendees || a.support || '',
+        durationMin: Number(a.duration_min || a.durationMin) || 10,
+        from_time: a.from_time || '',
+        to_time: a.to_time || ''
+      }));
+
+      setFormData(mappedForm);
+      setAgenda(mappedAgenda);
+      setVisitId(id);
+      setStep('vis2');
+    } catch (err) {
+      console.error('Failed to resume visit:', err);
+      alert('Could not load draft visit: ' + err.message);
+    }
   };
 
   return (
@@ -193,60 +261,63 @@ export default function App() {
       {screen === 'dashboard' && (
         <Shell screen="dashboard" goHome={goHome} navigate={navigate}>
           <Dashboard
-            onNewVIS={() => { setVisitId(null); setAgenda([]); setFormData(initForm()); setScreen('vis1'); }}
+            onNewVIS={() => { setVisitId(null); setAgenda([]); setFormData(initForm()); setStep('vis1'); }}
             onPrevVisitors={() => setScreen('previous')}
             onFeedback={() => setScreen('feedback')}
+            onResumeVisit={handleResumeVisit}
           />
         </Shell>
       )}
 
       {screen === 'previous' && (
-        <Shell screen="previous" goHome={goHome} navigate={navigate} title="Past Visitor Records" showBack onBackClick={goHome}>
-          <PreviousVisitors />
+        <Shell screen="previous" goHome={goHome} navigate={navigate} title="Past Visitor Records" showBack onBackClick={() => setScreen('dashboard')}>
+          <PreviousVisitors onResumeVisit={handleResumeVisit} />
         </Shell>
       )}
 
       {screen === 'feedback' && (
-        <Shell screen="feedback" goHome={goHome} navigate={navigate} title="Visitor Feedback" showBack onBackClick={goHome}>
+        <Shell screen="feedback" goHome={goHome} navigate={navigate} title="Visitor Feedback" showBack onBackClick={() => setScreen('dashboard')}>
           <FeedbackResults />
         </Shell>
       )}
 
       {screen === 'vis1' && (
-        <Shell screen="vis1" goHome={goHome} navigate={navigate} title="New VIS Sheet — Step 1 of 3" showBack onBackClick={goHome}>
+        <Shell screen="vis1" goHome={goHome} navigate={navigate} title="New VIS Sheet — Step 1 of 3" showBack onBackClick={() => setScreen('dashboard')}>
           <Screen1
             formData={formData}
             setFormData={setFormData}
-            onBack={goHome}
-            onNext={() => setScreen('vis2')}
+            onBack={() => setScreen('dashboard')}
+            onNext={() => setStep('vis2')}
           />
         </Shell>
       )}
 
       {screen === 'vis2' && (
-        <Shell screen="vis2" goHome={goHome} navigate={navigate} title="Agenda Builder — Step 2 of 3" showBack onBackClick={() => setScreen('vis1')}>
+        <Shell screen="vis2" goHome={goHome} navigate={navigate} title="Agenda Builder — Step 2 of 3" showBack onBackClick={() => setStep('vis1')}>
           <Screen2
             formData={formData}
             setFormData={setFormData}
+            agenda={agenda}
+            setAgenda={setAgenda}
             visitId={visitId}
             setVisitId={setVisitId}
-            onBack={() => setScreen('vis1')}
-            onNext={(rows, savedId) => { 
-              setAgenda(rows); 
+            onBack={() => setStep('vis1')}
+            onNext={(rows, savedId) => {
+              setAgenda(rows);
               if (savedId) setVisitId(savedId);
-              setScreen('vis3'); 
+              setStep('vis3');
             }}
           />
         </Shell>
       )}
 
       {screen === 'vis3' && (
-        <Shell screen="vis3" goHome={goHome} navigate={navigate} title="Summary & Confirmation — Step 3 of 3" showBack onBackClick={() => setScreen('vis2')}>
+        <Shell screen="vis3" goHome={goHome} navigate={navigate} title="Summary & Confirmation — Step 3 of 3" showBack onBackClick={() => setStep('vis2')}>
           <Screen3
             formData={formData}
             agenda={agenda}
             visitId={visitId}
-            onBack={() => setScreen('vis2')}
+            onBack={() => setStep('vis2')}
             onStartOver={goHome}
           />
         </Shell>

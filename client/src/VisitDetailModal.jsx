@@ -77,7 +77,7 @@ function StatusBadge({ status, lockInfo }) {
   );
 }
 
-export default function VisitDetailModal({ visitId, onClose, onUpdated }) {
+export default function VisitDetailModal({ visitId, onClose, onUpdated, onResumeVisit }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -201,11 +201,28 @@ export default function VisitDetailModal({ visitId, onClose, onUpdated }) {
               <StatusBadge status={visit.status} lockInfo={lockInfo} />
             </div>
           </div>
-          <button onClick={onClose} style={{
-            background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white',
-            width: 32, height: 32, borderRadius: '50%', fontSize: 18, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {onResumeVisit && visit?.status !== 'Completed' && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onResumeVisit(visitId);
+                }}
+                style={{
+                  background: '#D97706', color: 'white', border: 'none',
+                  borderRadius: 6, padding: '6px 14px', fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+                }}
+              >
+                ▶ Resume Agenda in Builder →
+              </button>
+            )}
+            <button onClick={onClose} style={{
+              background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white',
+              width: 32, height: 32, borderRadius: '50%', fontSize: 18, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>×</button>
+          </div>
         </div>
 
         {/* Content Body */}

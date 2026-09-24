@@ -74,15 +74,17 @@ router.post('/visits/finalize', async (req, res) => {
       };
     });
 
-    visit.status = 'Generated';
+    visit.status = req.body.status || 'Generated';
     const saved = await visit.save();
 
-    // 5. Automatically dispatch email to attendees upon Finish
+    // 5. Automatically dispatch email to attendees upon Finish (skip for Drafts)
     let emailResult = null;
-    try {
-      emailResult = await sendAgendaEmail(saved);
-    } catch (e) {
-      console.error('Finalize email dispatch warning:', e.message);
+    if (saved.status !== 'Draft') {
+      try {
+        emailResult = await sendAgendaEmail(saved);
+      } catch (e) {
+        console.error('Finalize email dispatch warning:', e.message);
+      }
     }
 
     res.json({

@@ -26,7 +26,7 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function PreviousVisitors() {
+export default function PreviousVisitors({ onResumeVisit }) {
   const [query, setQuery]       = useState('');
   const [field, setField]       = useState('all');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -246,10 +246,19 @@ export default function PreviousVisitors() {
                         </td>
                         <td style={{ padding: '12px 14px' }}><StatusBadge status={v.status} /></td>
                         <td style={{ padding: '12px 14px' }}>
-                          <button onClick={(e) => { e.stopPropagation(); setSelectedModalId(v.id); }}
-                            style={{ background: T.navy, color: 'white', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                            View Details & Photos →
-                          </button>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            {v.status === 'Draft' && onResumeVisit && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onResumeVisit(v.id); }}
+                                style={{ background: '#FFFBEB', color: '#D97706', border: '1px solid #FCD34D', borderRadius: 6, padding: '6px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                                ▶ Resume Agenda →
+                              </button>
+                            )}
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedModalId(v.id); }}
+                              style={{ background: T.navy, color: 'white', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                              View Details & Photos →
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -322,6 +331,7 @@ export default function PreviousVisitors() {
             visitId={selectedModalId}
             onClose={() => setSelectedModalId(null)}
             onUpdated={loadData}
+            onResumeVisit={onResumeVisit}
           />
         )}
       </div>

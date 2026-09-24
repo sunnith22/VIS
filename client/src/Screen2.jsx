@@ -51,7 +51,7 @@ const PRESET_GROUPS = [
 function toMin(t) { const [h, m] = (t || '09:00').split(':').map(Number); return h * 60 + m; }
 function toTime(m) { const hh = String(Math.floor(m / 60) % 24).padStart(2, '0'); const mm = String(m % 60).padStart(2, '0'); return `${hh}:${mm}`; }
 
-export default function Screen2({ formData, setFormData, visitId, setVisitId, onBack, onNext }) {
+export default function Screen2({ formData, setFormData, agenda: parentAgenda, setAgenda, visitId, setVisitId, onBack, onNext }) {
   const [areas, setAreas] = useState([]);
   const [subAreas, setSubAreas] = useState([]);
   const [transit, setTransit] = useState([]);
@@ -74,6 +74,12 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
   const [rows, setRows] = useState([]); // {rowId, area, activity, pic, support, durationMin}
   const [nextRowId, setNextRowId] = useState(1);
 
+  // Draft saving & Inline Editing State
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [draftSuccess, setDraftSuccess] = useState('');
+  const [editingRowId, setEditingRowId] = useState(null);
+  const [editForm, setEditForm] = useState({ area: '', activity: '', pic: '', support: '', durationMin: 15 });
+
   const [view, setView] = useState('builder'); // builder | preview
   const [genError, setGenError] = useState('');
   const printRef = useRef();
@@ -95,6 +101,22 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
+
+  // Initialize rows from parent agenda if provided (e.g. tab switch or resuming draft)
+  useEffect(() => {
+    if (parentAgenda && parentAgenda.length > 0 && rows.length === 0) {
+      const initialRows = parentAgenda.map((r, idx) => ({
+        rowId: r.rowId || idx + 1,
+        area: r.area || 'Area',
+        activity: r.activity_name || r.activity || '',
+        pic: r.pic || '',
+        support: r.support_attendees || r.support || '',
+        durationMin: Number(r.duration_min || r.durationMin) || 10
+      }));
+      setRows(initialRows);
+      setNextRowId(Math.max(...initialRows.map(r => r.rowId), 0) + 1);
+    }
+  }, [parentAgenda]);
 
   const subsForArea = (areaId) => subAreas.filter(s => String(s.area_id) === String(areaId));
 
@@ -247,6 +269,43 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
   const moveRow = (idx, dir) => setRows(p => { const a = [...p]; const t = a[idx]; a[idx] = a[idx + dir]; a[idx + dir] = t; return a; });
   const updateDur = (rowId, val) => setRows(p => p.map(r => r.rowId === rowId ? { ...r, durationMin: Math.max(1, parseInt(val) || 1) } : r));
 
+  // Inline row editor handlers
+  const startEditingRow = (row) => {
+    setEditingRowId(row.rowId);
+    setEditForm({
+      area: row.area || '',
+      activity: row.activity || '',
+      pic: row.pic || '',
+      support: row.support || '',
+      durationMin: row.durationMin || 15
+    });
+  };
+
+  const cancelEditingRow = () => {
+    setEditingRowId(null);
+  };
+
+  const saveRowEdit = () => {
+    if (!editForm.area.trim()) {
+      setGenError('Area name cannot be empty.');
+      return;
+    }
+    if (!editForm.activity.trim()) {
+      setGenError('Activity name cannot be empty.');
+      return;
+    }
+    setRows(prev => prev.map(r => r.rowId === editingRowId ? {
+      ...r,
+      area: editForm.area.trim(),
+      activity: editForm.activity.trim(),
+      pic: editForm.pic.trim(),
+      support: editForm.support.trim(),
+      durationMin: Math.max(1, parseInt(editForm.durationMin) || 10)
+    } : r));
+    setEditingRowId(null);
+    setGenError('');
+  };
+
   // Live cascading schedule (client-side preview)
   const schedule = (() => {
     let cursor = toMin(startTime);
@@ -267,9 +326,42 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
     });
   })();
 
+  // Sync built schedule with parent App state so tab switches preserve agenda
+  useEffect(() => {
+    if (setAgenda) {
+      setAgenda(schedule);
+    }
+  }, [rows, startTime]);
+
   const totalMin = rows.reduce((s, r) => s + r.durationMin, 0);
 
-  // Advances to Step 3 Summary Screen (In-memory draft, does NOT write to database yet!)
+  // Explicit Save as Draft Visit Handler
+  const handleSaveDraft = async () => {
+    setGenError('');
+    setDraftSuccess('');
+    setDraftSaving(true);
+    try {
+      const res = await api.finalizeVisit({
+        visitId,
+        header: formData,
+        visitors: formData.visitors,
+        topAttendees: formData.topAttendees,
+        agenda: schedule,
+        startTime,
+        status: 'Draft'
+      });
+      if (res.visitId && setVisitId) {
+        setVisitId(res.visitId);
+      }
+      setDraftSuccess('✅ Visit agenda saved as Draft! You can switch tabs or resume building anytime.');
+    } catch (err) {
+      setGenError('Failed to save draft visit: ' + err.message);
+    } finally {
+      setDraftSaving(false);
+    }
+  };
+
+  // Advances to Step 3 Summary Screen
   const handleProceedToSummary = () => {
     setGenError('');
     if (rows.length === 0) {
@@ -315,7 +407,18 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
         <span style={{ fontSize: 12, opacity: 0.8, marginLeft: 4 }}>
           {formData?.company || 'Company'} · {formData?.visitDate} · Visit #{formData?.visitNo}
         </span>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            onClick={handleSaveDraft}
+            disabled={draftSaving}
+            style={{
+              background: "#D97706", color: "white", border: "none",
+              borderRadius: 5, padding: "6px 14px", cursor: "pointer",
+              fontSize: 12, fontWeight: 700, boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+            }}
+          >
+            {draftSaving ? 'Saving Draft...' : '💾 Save as Draft'}
+          </button>
           <button onClick={() => setView('builder')} style={{ background: view === 'builder' ? "#6D28D9" : "rgba(255,255,255,0.15)", color: "white", border: "none", borderRadius: 4, padding: "6px 14px", cursor: "pointer", fontSize: 12, fontWeight: view === 'builder' ? 700 : 400 }}>
             🏗 Builder
           </button>
@@ -589,6 +692,71 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
                 {schedule.map((row, idx) => {
                   const area = areas.find(a => a.area_name === row.area);
                   const c = colorSet(area?.color_hex);
+                  const isEditing = editingRowId === row.rowId;
+
+                  if (isEditing) {
+                    return (
+                      <div key={row.rowId} style={{ background: "#FFFBEB", border: "2px solid #F59E0B", borderRadius: 8, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#92400E" }}>✏️ Edit Agenda Entry #{idx + 1}</span>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button onClick={saveRowEdit} style={{ background: "#059669", color: "white", border: "none", borderRadius: 5, padding: "5px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                              ✓ Save Edit
+                            </button>
+                            <button onClick={cancelEditingRow} style={{ background: "#E2E8F0", color: "#475569", border: "none", borderRadius: 5, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                              ✕ Cancel
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <div>
+                            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 700 }}>Area Name *</label>
+                            <input
+                              value={editForm.area}
+                              onChange={e => setEditForm(f => ({ ...f, area: e.target.value }))}
+                              style={{ width: "100%", padding: "5px 8px", border: "1px solid #FCD34D", borderRadius: 4, fontSize: 12, background: "white", boxSizing: "border-box" }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 700 }}>Activity / Sub-area *</label>
+                            <input
+                              value={editForm.activity}
+                              onChange={e => setEditForm(f => ({ ...f, activity: e.target.value }))}
+                              style={{ width: "100%", padding: "5px 8px", border: "1px solid #FCD34D", borderRadius: 4, fontSize: 12, background: "white", boxSizing: "border-box" }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 700 }}>PIC / Presenter</label>
+                            <input
+                              value={editForm.pic}
+                              onChange={e => setEditForm(f => ({ ...f, pic: e.target.value }))}
+                              style={{ width: "100%", padding: "5px 8px", border: "1px solid #FCD34D", borderRadius: 4, fontSize: 12, background: "white", boxSizing: "border-box" }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 10, color: "#92400E", fontWeight: 700 }}>Duration (mins)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={editForm.durationMin}
+                              onChange={e => setEditForm(f => ({ ...f, durationMin: e.target.value }))}
+                              style={{ width: "100%", padding: "5px 8px", border: "1px solid #FCD34D", borderRadius: 4, fontSize: 12, background: "white", boxSizing: "border-box" }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 10, color: "#92400E", fontWeight: 700 }}>Support / Attendees</label>
+                          <input
+                            value={editForm.support}
+                            onChange={e => setEditForm(f => ({ ...f, support: e.target.value }))}
+                            placeholder="Type support attendees..."
+                            style={{ width: "100%", padding: "5px 8px", border: "1px solid #FCD34D", borderRadius: 4, fontSize: 12, background: "white", boxSizing: "border-box" }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={row.rowId} style={{ background: c.bg, border: `2px solid ${c.border}`, borderRadius: 8, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ width: 26, height: 26, borderRadius: "50%", background: c.border, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
@@ -625,25 +793,47 @@ export default function Screen2({ formData, setFormData, visitId, setVisitId, on
                         <button disabled={idx === 0} onClick={() => moveRow(idx, -1)} style={{ width: 22, height: 22, background: idx === 0 ? "#F1F5F9" : T.navy, color: "white", border: "none", borderRadius: 3, cursor: idx === 0 ? "not-allowed" : "pointer", fontSize: 12 }}>↑</button>
                         <button disabled={idx === rows.length - 1} onClick={() => moveRow(idx, 1)} style={{ width: 22, height: 22, background: idx === rows.length - 1 ? "#F1F5F9" : T.navy, color: "white", border: "none", borderRadius: 3, cursor: idx === rows.length - 1 ? "not-allowed" : "pointer", fontSize: 12 }}>↓</button>
                       </div>
-                      <button onClick={() => removeRow(row.rowId)} style={{ width: 26, height: 26, background: "#FEE2E2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: 4, cursor: "pointer", fontSize: 14, fontWeight: 700, flexShrink: 0 }}>×</button>
+                      <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                        <button onClick={() => startEditingRow(row)} title="Edit Entry" style={{ width: 26, height: 26, background: "#EDE9FE", color: "#7C3AED", border: "1px solid #DDD6FE", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 700 }}>✏️</button>
+                        <button onClick={() => removeRow(row.rowId)} title="Remove Entry" style={{ width: 26, height: 26, background: "#FEE2E2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: 4, cursor: "pointer", fontSize: 14, fontWeight: 700 }}>×</button>
+                      </div>
                     </div>
                   );
                 })}
               </div>
 
+              {draftSuccess && (
+                <div style={{ color: "#065F46", fontSize: 13, marginTop: 10, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 6, padding: "10px 14px", fontWeight: 600 }}>
+                  {draftSuccess}
+                </div>
+              )}
+
               {genError && <div style={{ color: "#DC2626", fontSize: 13, marginTop: 10, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 6, padding: "8px 12px", fontWeight: 600 }}>⚠️ {genError}</div>}
 
               {rows.length > 0 && (
-                <button
-                  onClick={handleProceedToSummary}
-                  style={{
-                    marginTop: 16, background: "#7C3AED", color: "white", border: "none",
-                    borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700,
-                    cursor: "pointer", width: "100%", boxShadow: "0 2px 6px rgba(124,58,237,0.3)"
-                  }}
-                >
-                  Next: Review & Finish (Step 3) →
-                </button>
+                <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                  <button
+                    onClick={handleSaveDraft}
+                    disabled={draftSaving}
+                    style={{
+                      flex: 1, background: "#D97706", color: "white", border: "none",
+                      borderRadius: 8, padding: "12px 20px", fontSize: 14, fontWeight: 700,
+                      cursor: "pointer", boxShadow: "0 2px 6px rgba(217,119,6,0.25)"
+                    }}
+                  >
+                    {draftSaving ? 'Saving Draft...' : '💾 Save as Draft Visit'}
+                  </button>
+                  <button
+                    onClick={handleProceedToSummary}
+                    style={{
+                      flex: 2, background: "#7C3AED", color: "white", border: "none",
+                      borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700,
+                      cursor: "pointer", boxShadow: "0 2px 6px rgba(124,58,237,0.3)"
+                    }}
+                  >
+                    Next: Review & Finish (Step 3) →
+                  </button>
+                </div>
               )}
             </div>
           </div>
