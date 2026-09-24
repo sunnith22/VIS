@@ -144,6 +144,15 @@ export default function VisitDetailModal({ visitId, onClose, onUpdated, onResume
     setPhotos(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const downloadPhoto = (src, filename) => {
+    const link = document.createElement('a');
+    link.href = src;
+    link.download = filename || 'visit_photo.jpg';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleSave = async (markComplete = false) => {
     setSaving(true);
     setError('');
@@ -394,11 +403,11 @@ export default function VisitDetailModal({ visitId, onClose, onUpdated, onResume
                     {isLocked ? 'No photos were uploaded for this visit.' : <>No photos uploaded yet. Click <strong>"📷 Upload Photos"</strong> to add pictures.</>}
                   </div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 12 }}>
                     {photos.map((src, idx) => (
                       <div key={idx} style={{
-                        position: 'relative', height: 100, borderRadius: 8, overflow: 'hidden',
-                        border: `1px solid ${T.border}`, background: '#000'
+                        position: 'relative', height: 110, borderRadius: 8, overflow: 'hidden',
+                        border: `1px solid ${T.border}`, background: '#0F172A', boxShadow: '0 2px 5px rgba(0,0,0,0.08)'
                       }}>
                         <img
                           src={src}
@@ -406,15 +415,38 @@ export default function VisitDetailModal({ visitId, onClose, onUpdated, onResume
                           onClick={() => setPreviewPhoto(src)}
                           style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
                         />
+                        {/* Circular Download Button in Top Right Corner (No Time Limit) */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadPhoto(src, `${(visit.company_name || 'visit').replace(/\s+/g, '_')}_photo_${idx + 1}.jpg`);
+                          }}
+                          title="Download Photo"
+                          style={{
+                            position: 'absolute', top: 6, right: 6,
+                            background: 'rgba(15, 23, 42, 0.8)', color: 'white',
+                            border: '1px solid rgba(255, 255, 255, 0.4)', borderRadius: '50%',
+                            width: 28, height: 28, fontSize: 13, fontWeight: 700,
+                            cursor: 'pointer', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                            transition: 'background 0.15s'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#7C3AED'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(15, 23, 42, 0.8)'; }}
+                        >
+                          ⬇
+                        </button>
+                        {/* Circular Remove Button in Top Left Corner (Only before 24h lock) */}
                         {!isLocked && (
                           <button
-                            onClick={() => removePhoto(idx)}
+                            onClick={(e) => { e.stopPropagation(); removePhoto(idx); }}
                             title="Remove photo"
                             style={{
-                              position: 'absolute', top: 4, right: 4, background: 'rgba(220,38,38,0.85)',
-                              color: 'white', border: 'none', borderRadius: '50%', width: 22, height: 22,
-                              fontSize: 13, fontWeight: 800, cursor: 'pointer', display: 'flex',
-                              alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+                              position: 'absolute', top: 6, left: 6, background: 'rgba(220,38,38,0.85)',
+                              color: 'white', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '50%',
+                              width: 24, height: 24, fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
                             }}
                           >
                             ×
@@ -490,8 +522,37 @@ export default function VisitDetailModal({ visitId, onClose, onUpdated, onResume
             alignItems: 'center', justifyContent: 'center', padding: 20
           }}
         >
-          <img src={previewPhoto} alt="Full view" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} />
-          <button style={{ position: 'absolute', top: 20, right: 20, background: 'white', color: 'black', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: 20, cursor: 'pointer', fontWeight: 800 }}>×</button>
+          <div style={{ position: 'relative', display: 'inline-block' }} onClick={e => e.stopPropagation()}>
+            <img src={previewPhoto} alt="Full view" style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: 8, boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'block' }} />
+            
+            {/* Lightbox Circular Download Button (No Time Limit) */}
+            <button
+              onClick={() => downloadPhoto(previewPhoto, `${(visit.company_name || 'visit').replace(/\s+/g, '_')}_photo.jpg`)}
+              title="Download Photo"
+              style={{
+                position: 'absolute', top: 12, right: 56, background: 'rgba(15, 23, 42, 0.85)',
+                color: 'white', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '50%',
+                width: 36, height: 36, fontSize: 16, cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+              }}
+            >
+              ⬇
+            </button>
+
+            {/* Lightbox Close Button */}
+            <button
+              onClick={() => setPreviewPhoto(null)}
+              title="Close Preview"
+              style={{
+                position: 'absolute', top: 12, right: 12, background: 'rgba(15, 23, 42, 0.85)',
+                color: 'white', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '50%',
+                width: 36, height: 36, fontSize: 20, cursor: 'pointer', fontWeight: 800,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+              }}
+            >
+              ×
+            </button>
+          </div>
         </div>
       )}
     </div>
