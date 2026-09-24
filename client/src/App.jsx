@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { api } from './api.js';
 import { LOGO_B64 } from './logo_b64.js';
 import Dashboard from './Dashboard.jsx';
 import Screen1 from './Screen1.jsx';
