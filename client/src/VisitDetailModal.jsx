@@ -211,7 +211,7 @@ export default function VisitDetailModal({ visitId, onClose, onUpdated, onResume
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {onResumeVisit && visit?.status !== 'Completed' && (
+            {onResumeVisit && visit?.status === 'Draft' && (
               <button
                 onClick={() => {
                   onClose();

@@ -30,7 +30,7 @@ export default function Screen3({ formData = {}, agenda = [], visitId, onBack, o
   const attendeeEmails = topAttendees.map(a => a.email?.trim()).filter(e => e && e.includes('@'));
 
   const [savedVisitId, setSavedVisitId] = useState(visitId || null);
-  const [isSaved, setIsSaved] = useState(Boolean(visitId));
+  const [isSaved, setIsSaved] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
 
   const refId = genRefId(savedVisitId, form.visitDate);
@@ -61,7 +61,8 @@ export default function Screen3({ formData = {}, agenda = [], visitId, onBack, o
         visitors: visitorsList,
         topAttendees: topAttendees,
         agenda: agendaRows,
-        startTime: form.visitStart || '09:00'
+        startTime: form.visitStart || '09:00',
+        status: 'Generated'
       });
 
       if (res && res.success) {
@@ -323,9 +324,19 @@ export default function Screen3({ formData = {}, agenda = [], visitId, onBack, o
               </button>
             </div>
           ) : (
-            <div style={{ background: '#ECFDF5', border: `1px solid #A7F3D0`, borderRadius: 8, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#065F46' }}>✅ Visit Saved in Database</div>
-              <div style={{ fontSize: 11, color: '#047857', marginTop: 2 }}>Emails have been dispatched to attendees.</div>
+            <div style={{ background: '#ECFDF5', border: `1px solid #A7F3D0`, borderRadius: 8, padding: 14, textAlign: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#065F46' }}>✅ Visit Finalized & Saved!</div>
+              <div style={{ fontSize: 11, color: '#047857', marginTop: 2 }}>Status is now <strong>Generated</strong>. Emails have been dispatched.</div>
+              <button
+                onClick={onStartOver}
+                style={{
+                  marginTop: 10, background: '#059669', color: 'white', border: 'none',
+                  borderRadius: 6, padding: '10px 14px', fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', width: '100%', boxShadow: '0 2px 4px rgba(5,150,105,0.2)'
+                }}
+              >
+                ← Return to Dashboard
+              </button>
             </div>
           )}
 
