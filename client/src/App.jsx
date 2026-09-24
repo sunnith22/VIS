@@ -50,7 +50,7 @@ export const initForm = () => ({
   lunch: { required: false, date: '', type: 'Special', venue: 'VIP' },
   plantTour: 'Bus',
   matrix: {},
-  rehearsals: { mdSan: flase, gmdSan: false, svp: false, vp: false, avp: false, hdd: false, count: 0 },
+  rehearsals: { mdSan: false, gmdSan: false, svp: false, vp: false, avp: false, hdd: false, count: 0 },
   prevVisitDate: '',
   visitedBefore: 'No'
 });
