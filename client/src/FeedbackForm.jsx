@@ -106,7 +106,7 @@ export default function FeedbackForm() {
       <div style={{ background:'white', border:`1px solid ${T.border}`, borderRadius:16, padding:'48px 40px', textAlign:'center', maxWidth:400, boxShadow:'0 8px 32px rgba(0,0,0,0.1)' }}>
         {/* <div style={{ fontSize:52, marginBottom:14 }}>🙏</div> */}
         <div style={{ fontSize:22, fontWeight:800, color:T.navy, marginBottom:8 }}>Thank You!</div>
-        <div style={{ fontSize:13, color:T.muted, lineHeight:1.6 }}>Your feedback has been submitted successfully. It will be reviewed by the TIEI team.</div>
+        <div style={{ fontSize:13, color:T.muted, lineHeight:1.6 }}>Your remarks & comments have been submitted successfully. It will be reviewed by the TIEI team.</div>
         <div style={{ marginTop:16, fontSize:11, color:T.muted }}>You may now close this page.</div>
       </div>
     </div>
@@ -120,7 +120,7 @@ export default function FeedbackForm() {
         <div style={{ background:T.navy, color:'white', borderRadius:'12px 12px 0 0', padding:'20px 24px', marginBottom:0, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
             <div style={{ fontSize:11, opacity:0.5, textTransform:'uppercase', letterSpacing:1, marginBottom:3 }}>Toyota Industries Engine India Ltd.</div>
-            <div style={{ fontSize:18, fontWeight:800 }}>Visitor Feedback Sheet</div>
+            <div style={{ fontSize:18, fontWeight:800 }}>Visitor Remarks & Comments Form</div>
           </div>
           <div style={{ fontSize:32 }}>🏭</div>
         </div>
@@ -204,13 +204,13 @@ export default function FeedbackForm() {
         </Section>
 
         {/* 3. Feedback */}
-        <Section num="3" title="Visitor Feedback">
+        <Section num="3" title="Visitor Remarks & Comments">
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
               <thead>
                 <tr style={{ background:T.bg }}>
                   <th style={{ padding:'6px 8px', textAlign:'left', color:T.muted, fontWeight:700, fontSize:10, textTransform:'uppercase', borderBottom:`1px solid ${T.border}`, width:40 }}>Sl No</th>
-                  <th style={{ padding:'6px 8px', textAlign:'left', color:T.muted, fontWeight:700, fontSize:10, textTransform:'uppercase', borderBottom:`1px solid ${T.border}` }}>Feedback / Suggestion / Advice</th>
+                  <th style={{ padding:'6px 8px', textAlign:'left', color:T.muted, fontWeight:700, fontSize:10, textTransform:'uppercase', borderBottom:`1px solid ${T.border}` }}>Remarks / Comments / Suggestions</th>
                   <th style={{ padding:'6px 8px', textAlign:'left', color:T.muted, fontWeight:700, fontSize:10, textTransform:'uppercase', borderBottom:`1px solid ${T.border}`, width:180 }}>From (Visitor Name)</th>
                 </tr>
               </thead>
@@ -220,7 +220,7 @@ export default function FeedbackForm() {
                     <td style={{ padding:'5px 8px', borderBottom:`1px solid ${T.border}`, color:T.muted, fontWeight:700, textAlign:'center' }}>{i+1}</td>
                     <td style={{ padding:'3px 5px', borderBottom:`1px solid ${T.border}` }}>
                       <textarea value={row.feedback} onChange={e => updFeedback(i,'feedback',e.target.value)}
-                        placeholder="Enter feedback, suggestion or advice…"
+                        placeholder="Enter remarks, comments or suggestions…"
                         rows={2} style={{ ...inputStyle, resize:'vertical', padding:'6px 8px' }} />
                     </td>
                     <td style={{ padding:'3px 5px', borderBottom:`1px solid ${T.border}` }}>
@@ -245,7 +245,7 @@ export default function FeedbackForm() {
 
         <button onClick={handleSubmit} disabled={loading}
           style={{ width:'100%', background:T.navy, color:'white', border:'none', borderRadius:8, padding:'13px', fontSize:14, fontWeight:800, cursor:loading?'not-allowed':'pointer', opacity:loading?0.6:1, marginBottom:24 }}>
-          {loading ? 'Submitting…' : 'Submit Feedback →'}
+          {loading ? 'Submitting…' : 'Submit Remarks & Comments →'}
         </button>
 
       </div>

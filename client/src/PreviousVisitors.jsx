@@ -138,7 +138,7 @@ export default function PreviousVisitors({ onResumeVisit }) {
             <input
               value={query} onChange={e => setQuery(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              placeholder="Search company, visitor name, advisor, or visit no…"
+              placeholder="Search company, visitor name, coordinator, or visit no…"
               style={{ ...selStyle, flex: 1, minWidth: 220 }}
             />
             <button onClick={handleSearch} disabled={loading}
@@ -187,7 +187,7 @@ export default function PreviousVisitors({ onResumeVisit }) {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: T.navy }}>
-                    {['Company', 'Visit Date', 'Visitors', 'Advisor / Purpose', 'Photos & Review', 'Status', ''].map(h => (
+                    {['Company', 'Visit Date', 'Visitors', 'Coordinator / Purpose', 'Photos & Review', 'Status', ''].map(h => (
                       <th key={h} style={{ padding: '10px 14px', textAlign: 'left', color: 'white', fontSize: 11, fontWeight: 700 }}>{h}</th>
                     ))}
                   </tr>
@@ -225,7 +225,7 @@ export default function PreviousVisitors({ onResumeVisit }) {
                           <div style={{ fontSize: 11, color: T.muted }}>Total: {(v.visitors || []).length} visitor(s)</div>
                         </td>
                         <td style={{ padding: '12px 14px', fontSize: 12, color: T.muted }}>
-                          <div>👤 Advisor: {v.visit_advisor || '—'}</div>
+                          <div>👤 Coordinator: {v.visit_advisor || '—'}</div>
                           {v.visit_purpose && <div style={{ fontSize: 11, color: T.subtle, fontStyle: 'italic' }}>{v.visit_purpose.slice(0, 35)}{v.visit_purpose.length > 35 ? '…' : ''}</div>}
                         </td>
                         <td style={{ padding: '12px 14px', fontSize: 11 }}>

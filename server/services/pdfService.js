@@ -84,8 +84,8 @@ function generateAgendaPdfBuffer(visit) {
       doc.font('Helvetica-Bold').text('Time Slot:', 42, y + 28);
       doc.font('Helvetica').text(`${visit.visit_start || '09:00'} - ${visit.visit_end || '17:00'}`, 95, y + 28);
 
-      doc.font('Helvetica-Bold').text('Visit Advisor:', 320, y + 28);
-      doc.font('Helvetica').text(visit.visit_advisor || '—', 390, y + 28);
+      doc.font('Helvetica-Bold').text('Visitor Coordinator:', 300, y + 28);
+      doc.font('Helvetica').text(visit.visit_advisor || '—', 410, y + 28);
 
       doc.font('Helvetica-Bold').text('Visit No.:', 42, y + 46);
       doc.font('Helvetica').text(visit.visit_no || '1st', 95, y + 46);

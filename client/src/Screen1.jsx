@@ -442,7 +442,7 @@ export default function Screen1({ formData, setFormData, onNext, onBack }) {
       return;
     }
     if (!formData.visitAdvisor?.trim()) {
-      setError('Visit Advisor is required.');
+      setError('Visitor Coordinator is required.');
       return;
     }
     if (!formData.visitDate?.trim()) {
@@ -538,9 +538,9 @@ export default function Screen1({ formData, setFormData, onNext, onBack }) {
       {/* ── Sub-header with key fields ── */}
       <div style={{ background: "#ffffff", borderBottom: `1px solid ${T.border}`, padding: "10px 24px", display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 200 }}>
-          <Label required>Visit Advisor</Label>
+          <Label required>Visitor Coordinator</Label>
           <input value={formData.visitAdvisor || ''} onChange={e => upd('visitAdvisor', e.target.value)}
-            placeholder="Advisor Name"
+            placeholder="Coordinator Name"
             style={{ flex: 1, padding: "5px 9px", border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 13, fontWeight: 500, outline: "none", color: T.text, minWidth: 130 }} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -71,12 +71,12 @@ function FeedbackCard({ fb }) {
           )}
 
           {/* Feedback rows */}
-          <div style={{ fontSize:11, fontWeight:700, color:T.muted, textTransform:'uppercase', letterSpacing:0.5, marginBottom:6 }}>Feedback / Suggestions</div>
+          <div style={{ fontSize:11, fontWeight:700, color:T.muted, textTransform:'uppercase', letterSpacing:0.5, marginBottom:6 }}>Remarks & Comments / Suggestions</div>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
             <thead>
               <tr style={{ background:T.navy }}>
                 <th style={{ padding:'6px 10px', color:'white', textAlign:'left', fontSize:10, fontWeight:700, width:40 }}>Sl No</th>
-                <th style={{ padding:'6px 10px', color:'white', textAlign:'left', fontSize:10, fontWeight:700 }}>Feedback / Suggestion / Advice</th>
+                <th style={{ padding:'6px 10px', color:'white', textAlign:'left', fontSize:10, fontWeight:700 }}>Remarks / Comments / Suggestions</th>
                 <th style={{ padding:'6px 10px', color:'white', textAlign:'left', fontSize:10, fontWeight:700, width:160 }}>From</th>
               </tr>
             </thead>
@@ -126,7 +126,7 @@ export default function FeedbackResults() {
 
         <div style={{ display:'flex', gap:8, marginBottom:20 }}>
           <TabBtn id="responses" label={`📋 Responses (${responses.length})`} />
-          <TabBtn id="share" label="🔗 Share Feedback Form" />
+          <TabBtn id="share" label="🔗 Share Remarks & Comments Form" />
         </div>
 
         {/* SHARE TAB */}
@@ -173,8 +173,8 @@ export default function FeedbackResults() {
           ) : responses.length === 0 ? (
             <div style={{ background:'white', border:`1px solid ${T.border}`, borderRadius:10, padding:40, textAlign:'center' }}>
               <div style={{ fontSize:32, marginBottom:10 }}>💬</div>
-              <div style={{ fontSize:14, fontWeight:600, color:T.navy }}>No feedback submitted yet</div>
-              <div style={{ fontSize:13, color:T.muted, marginTop:6 }}>Share the feedback form with visitors using the "Share" tab above.</div>
+              <div style={{ fontSize:14, fontWeight:600, color:T.navy }}>No remarks & comments submitted yet</div>
+              <div style={{ fontSize:13, color:T.muted, marginTop:6 }}>Share the Remarks & Comments Form with visitors using the "Share" tab above.</div>
             </div>
           ) : responses.map((fb, i) => <FeedbackCard key={i} fb={fb} />)
         )}

@@ -275,7 +275,7 @@ export default function VisitDetailModal({ visitId, onClose, onUpdated, onResume
                   <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginTop: 3 }}>⏰ {visit.visit_start || '09:00'} - {visit.visit_end || '17:00'}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: T.muted, textTransform: 'uppercase' }}>Visit Advisor</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: T.muted, textTransform: 'uppercase' }}>Visitor Coordinator</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginTop: 3 }}>👤 {visit.visit_advisor || '—'}</div>
                 </div>
                 <div>

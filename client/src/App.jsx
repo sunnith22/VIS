@@ -60,7 +60,7 @@ const NAV = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'vis1', label: 'New VIS' },
   { id: 'previous', label: 'Past Visits' },
-  { id: 'feedback', label: 'Feedback' },
+  { id: 'feedback', label: 'Remarks & Comments' },
 ];
 
 /* ── Top horizontal nav ───────────────────────────────────────────────────── */
@@ -277,7 +277,7 @@ export default function App() {
       )}
 
       {screen === 'feedback' && (
-        <Shell screen="feedback" goHome={goHome} navigate={navigate} title="Visitor Feedback" showBack onBackClick={() => setScreen('dashboard')}>
+        <Shell screen="feedback" goHome={goHome} navigate={navigate} title="Visitor Remarks & Comments" showBack onBackClick={() => setScreen('dashboard')}>
           <FeedbackResults />
         </Shell>
       )}

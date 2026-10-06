@@ -873,7 +873,7 @@ export default function Screen2({ formData, setFormData, agenda: parentAgenda, s
                 <div style={{ textAlign: "right", fontSize: 12 }}>
                   <div><b>Date:</b> {formData?.visitDate}</div>
                   <div><b>Time:</b> {startTime} – {schedule.length ? schedule[schedule.length - 1].to_time : ""}</div>
-                  <div><b>Advisor:</b> {formData?.visitAdvisor || "—"}</div>
+                  <div><b>Coordinator:</b> {formData?.visitAdvisor || "—"}</div>
                 </div>
               </div>
 

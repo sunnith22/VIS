@@ -83,7 +83,7 @@ function generateEmailCoverHtml(visit) {
             <td style="padding: 5px 0; color: #7c3aed; font-weight: 700;">${visit.visit_start || '09:00'} – ${visit.visit_end || '17:00'}</td>
           </tr>
           <tr>
-            <td style="padding: 5px 0; color: #64748b;">👤 <strong>Visit Advisor:</strong></td>
+            <td style="padding: 5px 0; color: #64748b;">👤 <strong>Visitor Coordinator:</strong></td>
             <td style="padding: 5px 0; color: #0f172a;">${visit.visit_advisor || '—'}</td>
           </tr>
           ${visit.visit_no ? `<tr><td style="padding: 5px 0; color: #64748b;">🏷️ <strong>Visit No.:</strong></td><td style="padding: 5px 0; color: #0f172a;">${visit.visit_no}</td></tr>` : ''}

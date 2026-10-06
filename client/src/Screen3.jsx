@@ -226,7 +226,7 @@ export default function Screen3({ formData = {}, agenda = [], visitId, onBack, o
             <div><strong>Company:</strong> {form.company || '—'}</div>
             <div><strong>Date:</strong> {form.visitDate || '—'}</div>
             <div><strong>Time:</strong> {form.visitStart || '09:00'} – {form.visitEnd || '17:00'}</div>
-            <div><strong>Advisor:</strong> {form.visitAdvisor || '—'}</div>
+            <div><strong>Coordinator:</strong> {form.visitAdvisor || '—'}</div>
             <div><strong>Visit No.:</strong> {form.visitNo || '—'}</div>
             <div><strong>Visitors:</strong> {visitorsList.length}</div>
           </div>
@@ -409,7 +409,7 @@ export default function Screen3({ formData = {}, agenda = [], visitId, onBack, o
           </button>
 
           <button onClick={() => window.location.href = '/feedback'} style={{ background: 'white', color: '#059669', border: `1.5px solid #059669`, borderRadius: 7, padding: '9px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-            💬 Share Feedback Form
+            💬 Share Remarks & Comments Form
           </button>
 
         </div>

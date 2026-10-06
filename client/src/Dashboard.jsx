@@ -145,7 +145,7 @@ export default function Dashboard({ onNewVIS, onPrevVisitors, onFeedback, onResu
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${C.border}`, background: '#F8FAFC' }}>
-              {['Company','Visit Date','Advisor','Visit No.','Status','Action'].map(h => (
+              {['Company','Visit Date','Coordinator','Visit No.','Status','Action'].map(h => (
                 <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11,
                   fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: 0.4 }}>{h}</th>
               ))}
